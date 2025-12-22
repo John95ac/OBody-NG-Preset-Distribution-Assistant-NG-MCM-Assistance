@@ -1,0 +1,35 @@
+{
+  "port_restrictions": {
+    "reserved_range": {
+      "start": 0,
+      "end": 1024,
+      "Very used ports": [
+        3000,
+        5000,
+        8000,
+        8080,
+        8020,
+        5360,
+        3306,
+        7860,
+        27017,
+        5173,
+        5432,
+        6379,
+        4200,
+        9000,
+        15672,
+        49912
+      ],
+      "status": "do not use"
+    },
+    "common_development_ports": [
+      {
+        "port": 6050,
+        "port do not use": [6051, 6052, 6053, 6054, 6055, 6056, 6057, 6058, 6059, 6060],
+        "service": "OBody NG Preset Distribution Assistant NG MCM Full Assistance",
+        "reason": "Port used by the mod, to avoid using the same port."
+      }
+    ]
+  }
+}

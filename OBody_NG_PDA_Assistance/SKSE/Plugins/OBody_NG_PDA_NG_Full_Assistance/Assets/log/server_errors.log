@@ -1,0 +1,42 @@
+[2025-12-22 17:25:42] MCM.ini reset to false on startup
+[2025-12-22 17:25:42] === MAINTAINING RUTE.INI (SKSE_logs / Logs / Server_rute) ===
+[2025-12-22 17:25:42] Detected Skyrim documents root: C:\Users\56986\OneDrive\Documentos\My Games
+[2025-12-22 17:25:42] Rute.ini updated successfully
+[2025-12-22 17:25:42] === STARTING BACKUP PROCESS ===
+[2025-12-22 17:25:42] Using SKSE path: C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\SKSE
+[2025-12-22 17:25:42] Backup destination: C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\Manager_MCM\PDA
+[2025-12-22 17:25:42] Copying ini to C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\Manager_MCM\PDA\ini
+[2025-12-22 17:25:42] Copying Json to C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\Manager_MCM\PDA\Json
+[2025-12-22 17:25:42] Copying log to C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\Manager_MCM\PDA\log
+[2025-12-22 17:25:42] Copying xml to C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\Manager_MCM\PDA\xml
+[2025-12-22 17:25:42] RuleINI sync: created=0, updated=0, deleted=2 src=G:\CLOSE SPACE\OBody NG Preset Distribution Assistant NG MCM Assistance\Base\PDA_MCM dst=C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\Manager_MCM\PDA\RuleINI
+[2025-12-22 17:25:42] ConfigMCM_Backups_John95AC.txt source path: G:\CLOSE SPACE\OBody NG Preset Distribution Assistant NG MCM Assistance\Base\PDA_MCM\SKSE\Plugins\OBody_NG_PDA_NG_Full_Assistance\Assets\Data\ConfigMCM_Backups_John95AC.txt
+[2025-12-22 17:25:42] ConfigMCM_Backups_John95AC.txt destination path: C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\Manager_MCM\ConfigMCM_Backups_John95AC.txt
+[2025-12-22 17:25:42] Source file exists, size: 814 bytes
+[2025-12-22 17:25:42] ConfigMCM_Backups_John95AC.txt already exists in Manager_MCM, skipping copy
+[2025-12-22 17:25:42] === BACKUP PROCESS COMPLETED ===
+[2025-12-22 17:25:42] ============================================================
+[2025-12-22 17:25:42] SERVER STARTING
+[2025-12-22 17:25:42] ============================================================
+[2025-12-22 17:25:42] Auto-exported explanations INI: G:\CLOSE SPACE\OBody NG Preset Distribution Assistant NG MCM Assistance\Base\PDA_MCM\PDA_explanations.ini
+[2025-12-22 17:25:42] === DEAD MAN SWITCH THREAD STARTED ===
+[2025-12-22 17:25:42] Dead Man Switch thread started
+[2025-12-22 17:25:42] Looking for: G:\CLOSE SPACE\OBody NG Preset Distribution Assistant NG MCM Assistance\Base\PDA_MCM\SKSE\Plugins\OBody_NG_PDA_NG_Full_Assistance\Assets\log\SkyrimSwitch.log
+[2025-12-22 17:25:42] Shutdown monitor thread started
+[2025-12-22 17:25:42] File exists - Starting monitoring
+[2025-12-22 17:25:42] EnableSave monitor thread started
+[2025-12-22 17:25:42] Waiting for log activity...
+[2025-12-22 17:25:42] Rule generator monitor started
+[2025-12-22 17:25:42] Rule generator monitor thread started
+[2025-12-22 17:25:42] Temp INI changes monitor started
+[2025-12-22 17:25:42] Temp INI changes monitor thread started
+[2025-12-22 17:25:42] Start timer monitor thread started
+[2025-12-22 17:25:42] Plugins sync thread started
+[2025-12-22 17:25:42] NPCs sync thread started
+[2025-12-22 17:25:42] Backup sync thread started
+[2025-12-22 17:25:42] Server running on http://localhost:6050
+[2025-12-22 17:25:46] Path of free and stable port. Updated in the JSON master list.
+[2025-12-22 17:25:47] Update check completed - System is up to date with latest version 2.9.5 from https://john95ac.github.io/website-documents-John95AC/NEWS_MCM/Notes%20and%20updates/PDA.json
+[2025-12-22 17:25:47] RuleINI sync: created=1, updated=0, deleted=0 src=G:\CLOSE SPACE\OBody NG Preset Distribution Assistant NG MCM Assistance\Base\PDA_MCM dst=C:\Users\56986\OneDrive\Documentos\My Games\Skyrim Special Edition\Manager_MCM\PDA\RuleINI
+[2025-12-22 17:26:02] Rute.ini not found, cannot sync backup
+[2025-12-22 17:26:28] MCM.ini set to true before shutdown
