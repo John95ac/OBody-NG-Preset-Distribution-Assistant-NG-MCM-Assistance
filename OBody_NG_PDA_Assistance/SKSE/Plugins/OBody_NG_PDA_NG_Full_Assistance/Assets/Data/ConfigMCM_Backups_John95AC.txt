@@ -1,0 +1,12 @@
+This folder you found is for automatically saving and managing the configurations of all advanced MCMs. 
+The system generates automatic backups by itself, just like OSTIM and other mods, 
+so that when you update any MCM it can read the settings from here without fear of losing them in the updates. 
+Ah, and by the way, this was one of the last ideas that occurred to me –during the mod creation process, 
+it didn't even cross my mind to make a config backups system. I was saving everything in the same mod folder, 
+but if you update, all the favorites and such get reset, ahahaha, 
+sometimes I overlook the simplest and most basic things. I hope you enjoy my mods,
+and you know, any idea or problem, send me a message on Nexus or other means, 
+
+https://www.youtube.com/watch?v=OBvnS39pC0A
+
+John95AC.
