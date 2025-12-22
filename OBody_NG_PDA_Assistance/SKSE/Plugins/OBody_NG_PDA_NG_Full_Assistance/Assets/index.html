@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>OBody NG PDA Assistance</title>
+    <link rel="icon" type="image/x-icon" href="Data/logTab.ico" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body class="theme-indice">
+    <div id="christmas-effects-container"></div>
+    <div id="easter-effects-container"></div>
+    <div id="halloween-effects-container"></div>
+    <div id="new-year-effects-container"></div>
+    <div id="saint-patrick-effects-container"></div>
+    <canvas id="particles"></canvas>
+
+    <div class="topbar" role="navigation" aria-label="Main navigation">
+        <div class="logo">
+            OBody NG PDA Assistance
+            <div id="skyrimStatus" class="skyrim-status skyrim-red" title="Skyrim connection status"></div>
+            <span id="skyrimStatusText" class="skyrim-status-text">Offline mode</span>
+        </div>
+        <nav class="tabs" aria-label="Sections">
+            <button class="tab-btn active" data-target="tab-indice" aria-controls="tab-indice" aria-selected="true">🗃️ Index</button>
+            <button class="tab-btn disabled-initial" data-target="tab-ini-generator" aria-controls="tab-ini-generator" aria-selected="false">🖋️ INI Generator</button>
+            <button class="tab-btn disabled-initial" data-target="submenu-dynamic" aria-controls="submenu-dynamic" aria-selected="false" style="position: relative;">🔮 Dynamic Info Extractor</button>
+            <button class="tab-btn disabled-initial" data-target="tab-skynet" aria-controls="tab-skynet" aria-selected="false">💃 Quick JSON Modifier</button>
+            <button class="tab-btn disabled-initial" data-target="tab-chim" aria-controls="tab-chim" aria-selected="false">📔 Preset Sandbox</button>
+            <button class="tab-btn disabled-initial" data-target="tab-memorias" aria-controls="tab-memorias" aria-selected="false">📃 Log Viewer</button>
+            <button class="tab-btn disabled-initial" data-target="tab-news" aria-controls="tab-news" aria-selected="false">😸News</button>
+            <button class="tab-btn disabled-initial" data-target="tab-configuraciones" aria-controls="tab-configuraciones" aria-selected="false">⚙️ Configurations</button>
+        </nav>
+        <div class="dropdown-submenu" style="display: none;">
+            <button class="dropdown-option" data-target="tab-ostim">🔍 Dynamic Info Extractor NPC Range</button>
+            <button class="dropdown-option" data-target="tab-plugins">👗 Dynamic Info Extractor Plugins Items</button>
+            <button class="dropdown-option" data-target="tab-plugins-npc">👯 Dynamic Info Extractor Plugins NPC</button>
+        </div>
+        <button id="refreshBtn" class="btn btn-secondary" title="Refresh page 🔁">🔁</button>
+        <button class="btn btn-secondary" id="zoomInBtn" title="Ctrl +">🔍+</button>
+        <button class="btn btn-secondary" id="zoomOutBtn" title="Ctrl -">🔍-</button>
+        <button class="btn btn-shutdown" id="shutdownBtn" title="Shut down server">Shutdown</button>
+    </div>
+
+    <div class="container container-wide">
+        <section id="tab-indice" class="tab-content active" tabindex="0">
+              <header>
+                  <h1>Home, quick access and information</h1>
+                  <p class="subtitle">Main page, with most used content, tips and help</p>
+                  <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-indice')">🎨</button>
+              </header>
+
+            <div class="content-grid">
+              <section class="card standalone-card" style="text-align: center; position: relative;">
+                  <h2>Standalone Icon</h2>
+                  <img src="Data/013.gif" alt="Icon" class="standalone-gif">
+                  <p class="description">Create desktop shortcuts for standalone mode</p>
+                  <button class="btn btn-primary" id="createShortcutsBtn">Create Shortcut</button>
+                  <div class="status" id="shortcutsStatus" style="margin-top: 8px;">Press the button</div>
+              </section>
+
+              <section class="card" style="position: relative;">
+                  <h2>Review of Updates</h2>
+                  <p class="description">Here it is notified if there is any new revision of the mod.</p>
+                  <div class="status" id="versionStatus" style="background: rgba(251, 191, 36, 0.2);">Checking....</div>
+                  <button id="updateBtn" class="btn btn-secondary" style="position: absolute; top: 20px; right: 25px; padding: 5px 10px; font-size: 0.8rem;" disabled>Nothing to Updates</button>
+                  <div class="status" style="font-size: 0.9em; color: #666; margin-top: 10px;">This checker only checks if there is an update for the advanced PDA MCM, it doesn't directly mention whether the PDA was updated. So I recommend <a href="https://www.nexusmods.com/skyrimspecialedition/mods/159128" target="_blank">checking the mod page from time to time</a>.</div>
+              </section>
+
+              <section class="card">
+                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                      <h2 style="margin: 0;">JSON Quick Modification</h2>
+                      <button class="btn btn-secondary btn-mini" id="openSkseFolderBtn" type="button">SKSE folder</button>
+                  </div>
+                  <p class="description">Type here and it will auto-save to <code>Json/config.json</code></p>
+                  <textarea id="jsonTextarea" placeholder="Write something here...&#10;Auto-saves every 2 seconds"></textarea>
+                  <div class="status" id="jsonStatus">Saved</div>
+              </section>
+
+              <section class="card">
+                  <h2>Project updates registry</h2>
+                  <p class="description" style="color: #00bcd4;">Latest updates from <code>Data/updates.json</code></p>
+                  <div id="updateContent" style="height: 300px; overflow-y: auto;"></div>
+                  <div class="status" id="updatesStatus">Loading...</div>
+              </section>
+            </div>
+
+            <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center">System created with HTML, JS, CSS, Python and C++. I hope you enjoy the mods as much as I enjoyed creating them 🐈</div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+
+        <section id="tab-ini-generator" class="tab-content" tabindex="0">
+              <header>
+                   <h1>Interactive INI PDA NG Rule Generator</h1>
+                   <p class="subtitle">Generate OBody NG preset distribution rules easily <button id="toggleDescription" class="btn btn-secondary" style="font-size: 0.8em; padding: 2px 5px;">▼</button></p>
+                   <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-ini-generator')">🎨</button>
+               </header>
+               <div id="descriptionContainer" style="display: none;">
+                   <p class="subtitle">As you can see, this is the rule generator, but its portable version has many more functions, such as the ability to export in INI format, compile into ZIP to share as a mod, read previous INI files, apply favorites for presets, NPCs, or gear. It's something I've put a lot of time into. If you want to know more about how it works, you can go to <a href="https://john95ac.github.io/website-documents-John95AC/OBody_NG_Preset_Distribution_Assistant_NG/index.html" target="_blank" class="official-link">the official website</a>, but each button has a description. I hope it helps you.</p>
+               </div>
+
+            <div class="generator-grid">
+                <section class="card">
+                    <h2>🖋️ Rule Configuration</h2>
+                    <form id="ruleForm">
+                        <div class="control-group">
+                            <label for="ruleType" class="form-label">Rule Type</label>
+                            <select id="ruleType" class="form-control">
+                                <option value="">Select type...</option>
+                                <option value="npcFormID">npcFormID</option>
+                                <option value="npc">npc</option>
+                                <option value="factionFemale">factionFemale</option>
+                                <option value="factionMale">factionMale</option>
+                                <option value="npcPluginFemale">npcPluginFemale</option>
+                                <option value="npcPluginMale">npcPluginMale</option>
+                                <option value="raceFemale">raceFemale</option>
+                                <option value="raceMale">raceMale</option>
+                                <option value="blacklisted">blacklisted ▶</option>
+                                <option value="blacklistedNpcsFormID">blacklistedNpcsFormID</option>
+                                <option value="blacklistedOutfitsFromORefitFormID">blacklistedOutfitsFromORefitFormID</option>
+                                <option value="outfitsForceRefitFormID">outfitsForceRefitFormID</option>
+                                <option value="outfits">outfits ▶</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label for="elementValue" class="form-label">Element Value</label>
+                            <select id="blacklistedValue" class="form-control" style="display: none;">
+                                <option value="">Select blacklist type...</option>
+                                <option value="Npcs">Npcs</option>
+                                <option value="PresetsFromRandomDistribution">PresetsFromRandomDistribution</option>
+                                <option value="NpcsPluginFemale">NpcsPluginFemale</option>
+                                <option value="NpcsPluginMale">NpcsPluginMale</option>
+                                <option value="RacesFemale">RacesFemale</option>
+                                <option value="RacesMale">RacesMale</option>
+                            </select>
+                            <select id="elementValue" class="form-control" style="display: none;">
+                                <option value="">Select race...</option>
+                                <option value="NordRace">NordRace</option>
+                                <option value="ImperialRace">ImperialRace</option>
+                                <option value="BretonRace">BretonRace</option>
+                                <option value="RedguardRace">RedguardRace</option>
+                                <option value="DarkElfRace">DarkElfRace</option>
+                                <option value="HighElfRace">HighElfRace</option>
+                                <option value="WoodElfRace">WoodElfRace</option>
+                                <option value="OrcRace">OrcRace</option>
+                                <option value="KhajiitRace">KhajiitRace</option>
+                                <option value="ArgonianRace">ArgonianRace</option>
+                                <option value="ElderRace">ElderRace</option>
+                                <option value="NordRaceVampire">NordRaceVampire</option>
+                                <option value="ImperialRaceVampire">ImperialRaceVampire</option>
+                                <option value="BretonRaceVampire">BretonRaceVampire</option>
+                                <option value="RedguardRaceVampire">RedguardRaceVampire</option>
+                                <option value="DarkElfRaceVampire">DarkElfRaceVampire</option>
+                                <option value="HighElfRaceVampire">HighElfRaceVampire</option>
+                                <option value="WoodElfRaceVampire">WoodElfRaceVampire</option>
+                                <option value="OrcRaceVampire">OrcRaceVampire</option>
+                                <option value="KhajiitRaceVampire">KhajiitRaceVampire</option>
+                                <option value="ArgonianRaceVampire">ArgonianRaceVampire</option>
+                                <option value="ElderRaceVampire">ElderRaceVampire</option>
+                                <option value="00UBE_HighElfRace">00UBE_HighElfRace</option>
+                                <option value="00UBE_BretonRace">00UBE_BretonRace</option>
+                                <option value="00UBE_NordRace">00UBE_NordRace</option>
+                                <option value="00UBE_ImperialRace">00UBE_ImperialRace</option>
+                                <option value="00UBE_RedguardRace">00UBE_RedguardRace</option>
+                                <option value="00UBE_DarkElfRace">00UBE_DarkElfRace</option>
+                                <option value="00UBE_WoodElfRace">00UBE_WoodElfRace</option>
+                                <option value="00UBE_OrcRace">00UBE_OrcRace</option>
+                                <option value="00UBE_KhajiitRace">00UBE_KhajiitRace</option>
+                                <option value="00UBE_ArgonianRace">00UBE_ArgonianRace</option>
+                                <option value="00UBE_ElderRace">00UBE_ElderRace</option>
+                                <option value="00UBE_HighElfRaceVampire">00UBE_HighElfRaceVampire</option>
+                                <option value="00UBE_BretonRaceVampire">00UBE_BretonRaceVampire</option>
+                                <option value="00UBE_ImperialRaceVampire">00UBE_ImperialRaceVampire</option>
+                                <option value="00UBE_RedguardRaceVampire">00UBE_RedguardRaceVampire</option>
+                                <option value="00UBE_DarkElfRaceVampire">00UBE_DarkElfRaceVampire</option>
+                                <option value="00UBE_WoodElfRaceVampire">00UBE_WoodElfRaceVampire</option>
+                                <option value="00UBE_NordRaceVampire">00UBE_NordRaceVampire</option>
+                                <option value="00UBE_OrcRaceVampire">00UBE_OrcRaceVampire</option>
+                                <option value="00UBE_ElderRaceVampire">00UBE_ElderRaceVampire</option>
+                                <option value="00UBE_KhajiitRaceVampire">00UBE_KhajiitRaceVampire</option>
+                                <option value="00UBE_ArgonianRaceVampire">00UBE_ArgonianRaceVampire</option>
+                                <option value="custom">Custom races</option>
+                            </select>
+                            <select id="outfitsValue" class="form-control" style="display: none;">
+                                <option value="">Select outfit type...</option>
+                                <option value="outfitsForceRefit">outfitsForceRefit</option>
+                                <option value="blacklistedOutfitsFromORefit">blacklistedOutfitsFromORefit</option>
+                                <option value="blacklistedOutfitsFromORefitPlugin">blacklistedOutfitsFromORefitPlugin</option>
+                            </select>
+                            <input type="text" id="elementValueInput" class="form-control" placeholder="E.g.: Serana, GuardFaction, xx0001...">
+                        </div>
+
+                        <div class="control-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                                <label for="presets" class="form-label" style="margin: 0;">Presets</label>
+                                <button type="button" class="btn-mini btn-secondary" id="clearPresetsBtn" title="Clear presets field" onclick="clearPresetsField()">clean</button>
+                            </div>
+                            <input type="text" id="presets" class="form-control" placeholder="E.g.: PresetA,PresetB,PresetC">
+                        </div>
+
+                        <div class="control-group">
+                            <label class="form-label">Mode Level</label>
+                            <div class="mode-level-selector">
+                                <label class="radio-label">
+                                    <input type="radio" name="modeLevel" value="basic" checked>
+                                    <span class="radio-text">Basic</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="modeLevel" value="medium">
+                                    <span class="radio-text">Medium</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="modeLevel" value="advanced">
+                                    <span class="radio-text">Advanced</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label for="mode" class="form-label">Mode</label>
+                            <select id="mode" class="form-control">
+                                <option value="" selected data-level="basic">Empty (simple application)</option>
+                                <option value="1" data-level="basic">1 (once)</option>
+                                <option value="0" data-level="basic">0 (disabled)</option>
+                                <option value="-" data-level="basic">- (remove preset)</option>
+                                <option value="*" data-level="basic">* (priority preset)</option>
+                                <option value="KeyWord" data-level="medium">KeyWord</option>
+                                <option value="KeyWordChart" data-level="medium">KeyWordChart</option>
+                                <option value="KeyAuthor" data-level="medium">KeyAuthor</option>
+                                <option value="KeyNormal" data-level="medium">KeyNormal</option>
+                                <option value="KeyUBE" data-level="medium">KeyUBE</option>
+                                <option value="KeyHIMBO" data-level="medium">KeyHIMBO</option>
+                                <option value="KeyWord-" data-level="medium">KeyWord-</option>
+                                <option value="KeyWordChart-" data-level="medium">KeyWordChart-</option>
+                                <option value="KeyAuthor-" data-level="medium">KeyAuthor-</option>
+                                <option value="KeyNormal-" data-level="medium">KeyNormal-</option>
+                                <option value="KeyUBE-" data-level="medium">KeyUBE-</option>
+                                <option value="KeyHIMBO-" data-level="medium">KeyHIMBO-</option>
+                                <option value="KeyWord*" data-level="medium">KeyWord*</option>
+                                <option value="KeyWordChart*" data-level="medium">KeyWordChart*</option>
+                                <option value="KeyAuthor*" data-level="medium">KeyAuthor*</option>
+                                <option value="KeyNormal*" data-level="medium">KeyNormal*</option>
+                                <option value="KeyUBE*" data-level="medium">KeyUBE*</option>
+                                <option value="KeyHIMBO*" data-level="medium">KeyHIMBO*</option>
+                                <option value="KeyWord1" data-level="advanced">KeyWord1</option>
+                                <option value="KeyWordChart1" data-level="advanced">KeyWordChart1</option>
+                                <option value="KeyAuthor1" data-level="advanced">KeyAuthor1</option>
+                                <option value="KeyNormal1" data-level="advanced">KeyNormal1</option>
+                                <option value="KeyUBE1" data-level="advanced">KeyUBE1</option>
+                                <option value="KeyHIMBO1" data-level="advanced">KeyHIMBO1</option>
+                                <option value="KeyWord1-" data-level="advanced">KeyWord1-</option>
+                                <option value="KeyWordChart1-" data-level="advanced">KeyWordChart1-</option>
+                                <option value="KeyAuthor1-" data-level="advanced">KeyAuthor1-</option>
+                                <option value="KeyNormal1-" data-level="advanced">KeyNormal1-</option>
+                                <option value="KeyUBE1-" data-level="advanced">KeyUBE1-</option>
+                                <option value="KeyHIMBO1-" data-level="advanced">KeyHIMBO1-</option>
+                                <option value="KeyWord1*" data-level="advanced">KeyWord1*</option>
+                                <option value="KeyWordChart1*" data-level="advanced">KeyWordChart1*</option>
+                                <option value="KeyAuthor1*" data-level="advanced">KeyAuthor1*</option>
+                                <option value="KeyNormal1*" data-level="advanced">KeyNormal1*</option>
+                                <option value="KeyUBE1*" data-level="advanced">KeyUBE1*</option>
+                                <option value="KeyHIMBO1*" data-level="advanced">KeyHIMBO1*</option>
+                            </select>
+                        </div>
+
+                        <button type="button" id="newRule" class="btn btn-primary btn-full-width">Add New Rule</button>
+                    </form>
+                </section>
+
+                <section class="card">
+                    <div class="generator-output-header">
+                        <h2>📋 Generated Rules</h2>
+                        <div class="btn-group-compact">
+                            <button id="exampleBtn" class="btn-mini btn-secondary btn-glow-celeste" onclick="openExampleModal()">📸 Show Rules</button>
+                            <button id="cleanRuleBtn" class="btn-mini btn-danger">🗑️ Delete</button>
+                            <button id="copyRuleBtn" class="btn-mini btn-success">📋 Copy</button>
+                            <button id="saveRuleBtn" class="btn-mini btn-primary">💾 Save</button>
+                            <button id="folderBtn" class="btn-mini btn-primary">🗂️ Folder</button>
+                            <input type="file" id="iniFileInput" accept=".ini" style="display: none;">
+                            <button id="openBtn" class="btn-mini btn-primary">📥 Open</button>
+                            <button id="modPackBtn" class="btn-mini btn-primary">📦 Mod Pack</button>
+                        </div>
+                    </div>
+                    <pre id="generatedRule" class="ini-output" contenteditable="true">; Complete all fields to generate the INI rule</pre>
+                    <div id="autoSyncIndicator" style="display: none; position: absolute; bottom: 10px; right: 10px; align-items: center; gap: 5px; background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 5px; color: white; font-size: 0.8rem;">
+                        <img src="Data/013.gif" alt="Sync" style="width: 20px; height: 20px;">
+                        Auto-sync
+                    </div>
+                </section>
+            </div>
+
+            <div class="favoritos-section rule-favorites-section" id="ruleFavoritesPresetsSection">
+                <div class="favoritos-header" onclick="toggleFavoritosCollapse()">
+                    <h2>💃 Favorites Presets - <span id="favoritosCount">0</span> total</h2>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div id="favoritosContent" class="favoritos-content collapsed">
+                    <div class="preset-search">
+                        <input type="text" id="favoritosSearchInline" placeholder="Search favorites Presets..." class="preset-search-input">
+                    </div>
+                    <div id="favoritosList" class="preset-list-compact">Loading...</div>
+                </div>
+            </div>
+
+            <div class="favoritos-section rule-favorites-section" id="ruleFavoritesNpcSection">
+                <div class="favoritos-header" onclick="toggleFavoritosCollapseNpc()">
+                    <h2>👥 Favorites NPC - <span id="favoritosNpcCount">0</span> total</h2>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div id="favoritosNpcContent" class="favoritos-content collapsed">
+                    <div class="preset-search">
+                        <input type="text" id="favoritosNpcSearchInline" placeholder="Search favorites NPC..." class="preset-search-input">
+                    </div>
+                    <div id="favoritosNpcList" class="preset-list-compact">Loading...</div>
+                </div>
+            </div>
+
+            <div class="favoritos-section rule-favorites-section" id="ruleFavoritesOutfitsSection">
+                <div class="favoritos-header" onclick="toggleFavoritosCollapseOutfits()">
+                    <h2>👗 Favorites Outfits - <span id="favoritosOutfitsCount">0</span> total</h2>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div id="favoritosOutfitsContent" class="favoritos-content collapsed">
+                    <div class="preset-search">
+                        <input type="text" id="favoritosOutfitsSearchInline" placeholder="Search favorites Outfits..." class="preset-search-input">
+                    </div>
+                    <div id="favoritosOutfitsList" class="preset-list-compact">Loading...</div>
+                </div>
+            </div>
+
+            <div class="favoritos-section rule-favorites-section" id="ruleFavoritesFactionsSection">
+                <div class="favoritos-header" onclick="toggleFactionsLibraryCollapse()">
+                    <h2>⚔️ Faction Custom Library - <span id="factionsLibraryCount">0</span> total</h2>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div id="factionsLibraryContent" class="favoritos-content collapsed">
+                    <div class="preset-search">
+                        <div class="btn-group-compact">
+                            <button class="btn-mini btn-secondary" id="loadMemoriFFactionsBtn">⚔️ Faction From NPCs around you (0)</button>
+                            <button class="btn-mini btn-secondary" id="loadCsvFactionsBtn">⚔️ Faction From CSV Base Game (0)</button>
+                        </div>
+                        <input type="text" id="factionsLibrarySearchInline" placeholder="Search factions..." class="preset-search-input">
+                    </div>
+                    <div id="factionsLibraryList" class="preset-list-compact">Loading...</div>
+                </div>
+            </div>
+
+            <div class="preset-lists-section">
+                <h2 id="presetListsTitle">Preset Lists from List-Helper.log</h2>
+                <div class="preset-lists-grid">
+                    <section class="card preset-list-card">
+                        <h3>NORMAL PRESETS (CBBE/3BA/BHUNP/etc.)</h3>
+                        <div class="preset-search">
+                            <input type="text" id="normalSearch" placeholder="Search presets..." class="preset-search-input">
+                        </div>
+                        <div id="normalPresets" class="preset-list">Loading...</div>
+                    </section>
+
+                    <section class="card preset-list-card">
+                        <h3>UBE PRESETS (Female)</h3>
+                        <div class="preset-search">
+                            <input type="text" id="ubeSearch" placeholder="Search presets..." class="preset-search-input">
+                        </div>
+                        <div id="ubePresets" class="preset-list">Loading...</div>
+                    </section>
+
+                    <section class="card preset-list-card">
+                        <h3>HIMBO PRESETS (Male)</h3>
+                        <div class="preset-search">
+                            <input type="text" id="himboSearch" placeholder="Search presets..." class="preset-search-input">
+                        </div>
+                        <div id="himboPresets" class="preset-list">Loading...</div>
+                    </section>
+                </div>
+            </div>
+
+            <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center"></div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+
+        <section id="tab-ostim" class="tab-content" tabindex="0">
+             <header>
+                 <h1>Dynamic Info Extractor - NPC Range</h1>
+                 <p class="subtitle">Information obtained from NPCs in detection range</p>
+                 <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-ostim')">🎨</button>
+             </header>
+
+            <div class="ostim-grid">
+                <section class="card">
+                    <h2>🔍 NPC Around Information</h2>
+                    <p class="description">Content from <code>Json/Act2_Manager.json</code></p>
+                    <div class="json-controls">
+                        <button class="btn btn-primary" id="toggleAct2Start">NPCs in Detection Range</button>
+                    </div>
+                    <div id="act2Display" class="act2-display-container"></div>
+                </section>
+
+                <section class="card">
+                    <div id="npcDetailsPanel" class="npc-details-panel">
+                        <div class="panel-header">
+                            <h2>NPC Details</h2>
+                            <button class="panel-close" onclick="closeNPCDetails()">×</button>
+                        </div>
+                        <div id="npcDetailsContent" class="panel-content">
+                            <p class="placeholder-text">Select an NPC to view details</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <div id="npcScriptsPanel" class="npc-scripts-panel">
+                        <div class="panel-header">
+                            <h2>NPC Detection Range</h2>
+                            <button class="panel-close" onclick="closeNPCScripts()">×</button>
+                        </div>
+                        <div id="npcScriptsContent" class="panel-content">
+                             <div class="control-group">
+                                 <label for="radioDetecion">Detection Range (0-30M): 1M = 100 units in the game</label>
+                                 <div class="slider-container">
+                                     <input type="range" id="radioDetecion" min="0" max="30" value="5" step="0.5" class="slider">
+                                     <span id="radioValue">5.0</span>
+                                 </div>
+                                 <button class="btn btn-secondary" id="loadRadio" style="display: none;">Load from INI</button>
+                                 <button class="btn btn-primary" id="saveRadio">Save Detection Range</button>
+                                 <div class="status" id="radioStatus">Ready</div>
+                             </div>
+                         </div>
+                    </div>
+                </section>
+              </div>
+ 
+              <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center"></div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+
+        <section id="tab-plugins" class="tab-content" tabindex="0">
+             <header>
+                 <h1>Dynamic Info Extractor - Plugin Items</h1>
+                 <p class="subtitle">Information obtained from plugins and outfits via clicks</p>
+                 <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-plugins')">🎨</button>
+             </header>
+
+            <div class="ostim-grid">
+                <section class="card" id="pluginSelector">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                        <h2 style="margin: 0;">👗 Plugin Selector</h2>
+                        <input type="text" id="pluginSearch" placeholder="Search plugins..." class="form-control" style="flex: 1; max-width: 300px;">
+                    </div>
+                    <p class="description"><span id="pluginCount"></span> Content from <code>Json/Act2_Plugins.json</code></p>
+                    <button class="btn btn-primary" id="pluginOutfitsActualisationBtn">Update Plugin Outfits</button>
+                    <span id="selectedBadgePlugins" class="selected-badge">(0 selected)</span>
+                    <div id="pluginSelectorContent"></div>
+                    <button id="toggleGifBtn" class="gif-toggle" title="Toggle animated GIFs (every 30s)">🐱</button>
+                </section>
+
+                <section class="card">
+                    <h2>Plugin Outfits Information</h2>
+                    <p class="description">Content from <code>Json/Act2_Outfits.json</code></p>
+                    <div class="json-controls">
+                        <button class="btn btn-primary" id="togglePluginsStart">Plugin Outfits Information</button>
+                    </div>
+                    <div id="pluginsDisplay" class="act2-display-container"></div>
+                </section>
+
+                <section class="card">
+                    <div id="pluginsDetailsPanel" class="npc-details-panel">
+                        <div class="panel-header">
+                            <h2>Plugin Outfits Details</h2>
+                            <button class="btn btn-secondary btn-mini" id="clearPluginFavoritesBtn" title="Press to clear all favorites
+or when error occurs">🗑️ Clear Favorites</button>
+                            <button class="panel-close" onclick="closePluginsDetails()">×</button>
+                        </div>
+                        <div id="pluginsDetailsContent" class="panel-content">
+                            <p class="placeholder-text">Select a plugin to view details</p>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+            <div class="favoritos-section">
+                <div class="favoritos-header" onclick="toggleFavoritosCollapseOutfitsPlugins()">
+                    <h2>👗 Favorites Outfits - <span id="favoritosOutfitsCount_Plugins">0</span> total</h2>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div id="favoritosOutfitsContent_Plugins" class="favoritos-content collapsed">
+                    <div class="preset-search">
+                        <input type="text" id="favoritosOutfitsSearchInline_Plugins" placeholder="Search favorites..." class="preset-search-input">
+                    </div>
+                    <div id="favoritosOutfitsList_Plugins" class="preset-list-compact">Loading...</div>
+                </div>
+            </div>
+
+            <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center"></div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+        <section id="tab-plugins-npc" class="tab-content" tabindex="0">
+             <header>
+                 <h1>Dynamic Info Extractor - Plugin NPCs</h1>
+                 <p class="subtitle">Information obtained from plugins and NPCs via clicks</p>
+                 <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-plugins-npc')">🎨</button>
+             </header>
+
+             <div class="ostim-grid">
+                 <section class="card" id="npcPluginSelector">
+                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                         <h2 style="margin: 0;">👥 NPC Plugin Selector</h2>
+                         <input type="text" id="npcPluginSearch" placeholder="Search NPC Plugins.." class="form-control" style="flex: 1; max-width: 300px;">
+                     </div>
+                     <p class="description"><span id="npcPluginCount"></span> Content from <code>Json/Act2_NPCs.json</code></p>
+                     <button class="btn btn-primary" id="npcPluginOutfitsActualisationBtn">Update NPC Plugin Outfits</button>
+                     <span id="selectedBadgeNpcPlugins" class="selected-badge">(0 selected)</span>
+                    <div id="npcPluginSelectorContent"></div>
+                    <button id="toggleGifBtnNpc" class="gif-toggle" title="Toggle animated GIFs (every 30s)">🐱</button>
+                </section>
+
+                 <section class="card">
+                     <h2>NPC Plugin Outfits Information</h2>
+                     <p class="description">Content from <code>Json/Act2_NPCs_List.json</code></p>
+                     <div class="json-controls">
+                         <button class="btn btn-primary" id="npcTogglePluginsStart">NPC Plugin Outfits Information</button>
+                     </div>
+                     <div id="npcPluginsDisplay" class="act2-display-container">
+                         <p class="placeholder-text">Press the button</p>
+                     </div>
+                 </section>
+
+                 <section class="card">
+                     <div id="npcPluginsDetailsPanel" class="npc-details-panel">
+                         <div class="panel-header">
+                             <h2>NPC Plugin Details</h2>
+                             <button class="btn btn-secondary btn-mini" id="clearNpcFavoritesBtn" title="Press to clear all favorites
+or when error occurs">🗑️ Clear Favorites</button>
+                             <button class="panel-close" onclick="closeNpcPluginsDetails()">×</button>
+                         </div>
+                         <div id="npcPluginsDetailsContent" class="panel-content">
+                             <p class="placeholder-text">Select an NPC plugin to view details</p>
+                         </div>
+                     </div>
+                 </section>
+
+             </div>
+
+             <div class="favoritos-section">
+                <div class="favoritos-header" onclick="toggleFavoritosCollapseNPCsPlugins()">
+                    <h2>👥 Favorites NPC - <span id="favoritosNPCsCount_Plugins">0</span> total</h2>
+                    <span class="collapse-icon">▼</span>
+                </div>
+                <div id="favoritosNPCsContent_Plugins" class="favoritos-content collapsed">
+                    <div class="preset-search">
+                        <input type="text" id="favoritosNPCsSearchInline_Plugins" placeholder="Search favorites..." class="preset-search-input">
+                    </div>
+                    <div id="favoritosNPCsList_Plugins" class="preset-list-compact">Loading...</div>
+                </div>
+            </div>
+
+             <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center"></div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+         </section>
+
+        <section id="tab-skynet" class="tab-content" tabindex="0">
+             <header>
+                 <h1>Quick JSON Modifier</h1>
+                 <p class="subtitle">
+                     In this tab, you will be able to modify the master JSON on your own, safely; consider it a sandbox, since what you will modify is a copy of the updated file. And when you consider it ready, the "transfer configuration to game" button will perform the update. Here there is backup and more. It is recommended to use it with the game running, with Skyrim open, so you can browse the NPC list, get the ideal IDs with a few clicks, it's fun and took me time to make, so enjoy. It's a mix of C++, JS, and Python. Gradually, I'm getting the hang of this mixer system; it's nicer than just using Python with Qt5.
+                     <span class="json-master-note">And remember, all changes applied in this area will be reflected in Skyrim next update, in the next session when you reopen the game. This is OBody NG thing, so I can't do much about it.</span>
+                 </p>
+                 <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-skynet')">🎨</button>
+             </header>
+
+            <div class="skynet-grid">
+                <section class="card" id="masterJsonCard">
+                    <div class="master-json-header">
+                        <h2>Master JSON Configuration Sandbox</h2>
+                        <button class="btn btn-secondary" id="loadMasterJson">Refresh</button>
+                    </div>
+                    <p class="description">Content from <code>Json/OBody_presetDistributionConfig.json</code></p>
+                    <div class="json-controls master-json-controls">
+                        <div class="master-json-controls-left">
+                            <button class="btn btn-primary" id="triggerMasterJson">Load Current JSON Master 🢃</button>
+                            <div class="json-backups-dropdown" id="masterJsonBackupsDropdown">
+                                <button class="btn btn-secondary btn-mini json-backups-toggle" id="masterJsonBackupsToggle" type="button">Backups ▼</button>
+                                <div class="dropdown-submenu json-backups-menu" id="masterJsonBackupsMenu" style="display: none;">
+                                    <button class="dropdown-option" id="createMasterJsonBackupBtn" type="button">Create Backup</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-info btn-transfer-celeste" id="transferMasterJson">Update Sandbox to Master JSON 🢁</button>
+                    </div>
+                    <div id="masterJsonViewer" class="json-viewer">Click "Refresh" to view content</div>
+                </section>
+
+                <section class="card" id="jsonModifierCard">
+                    <div class="json-modifier-header">
+                        <h2>JSON Modificador</h2>
+                        <button type="button" class="btn-mini btn-secondary btn-glow-celeste" onclick="openExampleModal()">📸 Show Rules</button>
+                    </div>
+                    <p class="description json-modifier-description">
+                        Visual editor for OBody_presetDistributionConfig.json sections. Here you can use the favorites lists to make your own modifications. It's not as advanced as the INI system, here it's made for you to do manually. You can even write the elements if you decide to, but that can maximize potential errors.<br>
+                        For the same reason, I always recommend reading the <span id="obodyLogLink" class="obody-log-link">OBody log</span> for possible JSON errors.
+                    </p>
+                    <div id="jsonModifier" class="json-modifier">
+                        <div class="json-modifier-keys-wrapper">
+                            <div class="json-modifier-title">JSON Keys</div>
+                            <div class="json-modifier-keys">
+                                <button class="btn btn-secondary json-key-btn" data-json-key="npcFormID">npcFormID</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="npc">npc</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="factionFemale">factionFemale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="factionMale">factionMale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="npcPluginFemale">npcPluginFemale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="npcPluginMale">npcPluginMale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="raceFemale">raceFemale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="raceMale">raceMale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedNpcs">blacklistedNpcs</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedNpcsFormID">blacklistedNpcsFormID</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedNpcsPluginFemale">blacklistedNpcsPluginFemale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedNpcsPluginMale">blacklistedNpcsPluginMale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedRacesFemale">blacklistedRacesFemale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedRacesMale">blacklistedRacesMale</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedOutfitsFromORefitFormID">blacklistedOutfitsFromORefitFormID</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedOutfitsFromORefit">blacklistedOutfitsFromORefit</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedOutfitsFromORefitPlugin">blacklistedOutfitsFromORefitPlugin</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="outfitsForceRefitFormID">outfitsForceRefitFormID</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="outfitsForceRefit">outfitsForceRefit</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedPresetsFromRandomDistribution">blacklistedPresetsFromRandomDistribution</button>
+                                <button class="btn btn-secondary json-key-btn" data-json-key="blacklistedPresetsShowInOBodyMenu">blacklistedPresetsShowInOBodyMenu</button>
+                            </div>
+                        </div>
+                        <div class="json-modifier-content">
+                            <div class="json-modifier-title">Key elements</div>
+                            <div class="json-modifier-editor">
+                                <input type="text" id="jsonModifierSearch" class="preset-search-input" placeholder="Search elements...">
+                                <button id="jsonModifierAddBtn" class="btn json-editor-add-btn glow" style="display: none;">Add element</button>
+                                <div id="jsonModifierEditorKeys" class="json-modifier-editor-keys">Select a section to load editor</div>
+                            </div>
+                            <div class="json-modifier-title">Preset / NPC / Outfit data</div>
+                            <div id="jsonModifierViewer" class="json-viewer">Waiting for editor selection...</div>
+                            <div class="json-modifier-manual-toggle">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="jsonModifierEnableManualEdit">
+                                    <span>Enable manual edit</span>
+                                </label>
+                            </div>
+                            <div id="jsonModifierManualArea" style="display: none;">
+                                <textarea id="jsonModifierManualEditor" class="json-viewer" style="width: 100%; min-height: 220px; margin-top: 12px;" placeholder="Select an element above and edit JSON here..."></textarea>
+                                <button id="jsonModifierSaveManualBtn" class="btn btn-primary" style="margin-top: 12px;" disabled>Save Manual Change</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card" id="iniAnalysisCard">
+                    <h2>INI Analysis Log</h2>
+                    <p class="description">Content from <code>OBody_NG_Preset_Distribution_Assistant-NG_Analysis_INIs.log</code></p>
+                    <div class="log-controls">
+                        <button class="btn btn-secondary" id="loadAnalysisLog">Load Analysis Log</button>
+                        <button class="btn btn-primary" id="copyAnalysisLog">Copy Analysis Log</button>
+                        <button class="btn btn-secondary" id="expandAnalysisLog">Expand Analysis Log</button>
+                    </div>
+                    <div id="analysisLogViewer" class="log-textarea" style="white-space: pre-wrap;">Click "Load Analysis Log" to view content</div>
+                </section>
+            </div>
+
+            <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center"></div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+
+        <section id="tab-chim" class="tab-content" tabindex="0">
+              <header>
+                  <h1>Preset Sandbox WIP</h1>
+                  <p class="subtitle">Test and manage preset configurations</p>
+                  <p class="description">In this section you will be able to read the content of each preset, analyze visually, we will see changes, names and more. It is more for development and for those who know a lot about this type of elements. I hope this helps you to understand better about presets and also me to understand them better and perhaps in the future in this same page achieve a conversion of presets from 3ba to ube and vice versa with just a few clicks</p>
+                  <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-chim')">🎨</button>
+              </header>
+
+            <div class="sandbox-grid">
+                <div class="sandbox-lists">
+                    <section class="card">
+                        <h2>Preset Information</h2>
+                        <div id="presetFields">
+                            <!-- Preset fields will be dynamically generated here -->
+                        </div>
+                        <div class="button-group">
+                            <button class="btn btn-primary" id="updatePresetInfo">Update Preset Info</button>
+                        </div>
+                    </section>
+
+                    <section class="card preset-list-card">
+                        <h3>XML Files Found in Slider Presets Folder</h3>
+                        <p class="description">Total files: 311</p>
+                        <div class="preset-search">
+                            <input type="text" id="sandboxXmlSearch" placeholder="Search XML files..." class="preset-search-input">
+                        </div>
+                        <div id="sandboxXmlFiles" class="preset-list">Loading...</div>
+                    </section>
+                </div>
+
+                <div class="sandbox-xml">
+                    <section class="card">
+                        <h2>Preset Sandbox XML</h2>
+                        <p class="description">Content from <code>xml/Preset_Sandbox.xml</code></p>
+                        <textarea id="sandboxXmlContent" class="xml-textarea" style="white-space: pre-wrap; font-family: 'Courier New', monospace;">Loading...</textarea>
+                        <div class="button-group">
+                            <button class="btn btn-secondary" id="reloadSandboxXml">Reload XML</button>
+                            <button class="btn btn-danger" id="restoreSandboxXml">Restore XML</button>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>Generated Rules Sandbox INI</h2>
+                        <p class="description">Content from <code>ini/OBodyNG_PDA_Sandbox_temp.ini</code></p>
+                        <textarea id="sandboxIniContent" class="xml-textarea" style="white-space: pre-wrap; font-family: 'Courier New', monospace;">Loading...</textarea>
+                        <div class="button-group">
+                            <button class="btn btn-secondary" id="reloadSandboxIni">Reload INI</button>
+                            <button class="btn btn-primary" id="saveSandboxIni">Save INI</button>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>Filename to Internal Name Mapping</h2>
+                        <p class="description">From <code>OBody_NG_Preset_Distribution_Assistant-NG_Smart_Cleaning.log</code></p>
+                        <div id="filenameMapping" class="mapping-list">Loading...</div>
+                    </section>
+                </div>
+            </div>
+
+            <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center"></div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+
+        <section id="tab-memorias" class="tab-content" tabindex="0">
+              <header>
+                  <h1>Log Viewer</h1>
+                  <p class="subtitle">SKSE, Obody, PDA, Assistance Logs Viewer</p>
+                  <p class="subtitle" style="text-align: left; font-size: 2rem; margin-left: 20px; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">MCM Assistance Logs</p>
+                  <p style="margin-top: 15px; margin-bottom: 20px; color: var(--text-muted);">In this section you will find the logs with all the content that the project handles. It is useful for you to share among users if you need help, here is the project log that indicates the operations within it.</p>
+                  <div class="log-card-large">
+                      <div id="log-server-errors" class="log-textarea-large" style="white-space: pre-wrap;"></div>
+                  </div>
+                  <p class="subtitle" style="text-align: left; font-size: 2rem; margin-left: 20px; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">SKSE, Obody, PDA logs</p>
+                  <p style="margin-top: 15px; color: var(--text-muted);">This section displays all logs generated by the original OBody NG mod, as well as logs from the SKSE plugins Act1_OBody_NG_PDA_NG.dll and Act2_OBody_NG_PDA_NG.dll.</p>
+                  <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-memorias')">🎨</button>
+              </header>
+
+            <div class="logs-grid">
+                <section class="card log-card">
+                    <h2>OBody.log</h2>
+                    <p class="description">Main OBody log file</p>
+                    <div id="log-obody" class="log-textarea" style="white-space: pre-wrap;"></div>
+                    <div class="log-actions">
+                        <button class="btn btn-secondary btn-small" onclick="playReloadSound(); loadLog('OBody.log', 'log-obody')">Reload</button>
+                        <button class="btn btn-primary btn-small" onclick="playCopySound(); copyLog('log-obody')">Copy</button>
+                        <button class="btn btn-secondary btn-small" onclick="playExpandSound(); expandLog('log-obody', 'OBody.log')">Expand</button>
+                    </div>
+                </section>
+
+                <section class="card log-card">
+                    <h2>Assistant NG.log</h2>
+                    <p class="description">Main assistant log</p>
+                    <div id="log-assistant" class="log-textarea" style="white-space: pre-wrap;"></div>
+                    <div class="log-actions">
+                        <button class="btn btn-secondary btn-small" onclick="playReloadSound(); loadLog('OBody_NG_Preset_Distribution_Assistant-NG.log', 'log-assistant')">Reload</button>
+                        <button class="btn btn-primary btn-small" onclick="playCopySound(); copyLog('log-assistant')">Copy</button>
+                        <button class="btn btn-secondary btn-small" onclick="playExpandSound(); expandLog('log-assistant', 'Assistant NG.log')">Expand</button>
+                    </div>
+                </section>
+
+                <section class="card log-card">
+                    <h2>Advanced MCM.log</h2>
+                    <p class="description">Advanced MCM operations log</p>
+                    <div id="log-mcm" class="log-textarea" style="white-space: pre-wrap;"></div>
+                    <div class="log-actions">
+                        <button class="btn btn-secondary btn-small" onclick="playReloadSound(); loadLog('OBody_NG_Preset_Distribution_Assistant-NG_Advanced_MCM.log', 'log-mcm')">Reload</button>
+                        <button class="btn btn-primary btn-small" onclick="playCopySound(); copyLog('log-mcm')">Copy</button>
+                        <button class="btn btn-secondary btn-small" onclick="playExpandSound(); expandLog('log-mcm', 'Advanced MCM.log')">Expand</button>
+                    </div>
+                </section>
+
+                <section class="card log-card">
+                    <h2>Analysis INIs.log</h2>
+                    <p class="description">INI analysis log</p>
+                    <div id="log-analysis" class="log-textarea" style="white-space: pre-wrap;"></div>
+                    <div class="log-actions">
+                        <button class="btn btn-secondary btn-small" onclick="playReloadSound(); loadLog('OBody_NG_Preset_Distribution_Assistant-NG_Analysis_INIs.log', 'log-analysis')">Reload</button>
+                        <button class="btn btn-primary btn-small" onclick="playCopySound(); copyLog('log-analysis')">Copy</button>
+                        <button class="btn btn-secondary btn-small" onclick="playExpandSound(); expandLog('log-analysis', 'Analysis INIs.log')">Expand</button>
+                    </div>
+                </section>
+
+                <section class="card log-card">
+                    <h2>Doctor.log</h2>
+                    <p class="description">Diagnostic log</p>
+                    <div id="log-doctor" class="log-textarea" style="white-space: pre-wrap;"></div>
+                    <div class="log-actions">
+                        <button class="btn btn-secondary btn-small" onclick="playReloadSound(); loadLog('OBody_NG_Preset_Distribution_Assistant-NG_Doctor.log', 'log-doctor')">Reload</button>
+                        <button class="btn btn-primary btn-small" onclick="playCopySound(); copyLog('log-doctor')">Copy</button>
+                        <button class="btn btn-secondary btn-small" onclick="playExpandSound(); expandLog('log-doctor', 'Doctor.log')">Expand</button>
+                    </div>
+                </section>
+
+                <section class="card log-card">
+                    <h2>List Helper.log</h2>
+                    <p class="description">List operations log</p>
+                    <div id="log-list" class="log-textarea" style="white-space: pre-wrap;"></div>
+                    <div class="log-actions">
+                        <button class="btn btn-secondary btn-small" onclick="playReloadSound(); loadLog('OBody_NG_Preset_Distribution_Assistant-NG_List-Helper.log', 'log-list')">Reload</button>
+                        <button class="btn btn-primary btn-small" onclick="playCopySound(); copyLog('log-list')">Copy</button>
+                        <button class="btn btn-secondary btn-small" onclick="playExpandSound(); expandLog('log-list', 'List Helper.log')">Expand</button>
+                    </div>
+                </section>
+
+                <section class="card log-card">
+                    <h2>Smart Cleaning.log</h2>
+                    <p class="description">Smart cleaning log</p>
+                    <div id="log-cleaning" class="log-textarea" style="white-space: pre-wrap;"></div>
+                    <div class="log-actions">
+                        <button class="btn btn-secondary btn-small" onclick="playReloadSound(); loadLog('OBody_NG_Preset_Distribution_Assistant-NG_Smart_Cleaning.log', 'log-cleaning')">Reload</button>
+                        <button class="btn btn-primary btn-small" onclick="playCopySound(); copyLog('log-cleaning')">Copy</button>
+                        <button class="btn btn-secondary btn-small" onclick="playExpandSound(); expandLog('log-cleaning', 'Smart Cleaning.log')">Expand</button>
+                    </div>
+                </section>
+            </div>
+
+            <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center"></div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+        <section id="tab-news" class="tab-content" tabindex="0">
+              <header>
+                  <h1>News, updates, and projects page</h1>
+                  <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-news')">🎨</button>
+              </header>
+<section class="card" style="position: relative;">
+    <button id="refreshNewsBtn" class="btn-refresh-news" title="Reload original page">🔄</button>
+    <iframe id="newsIframe" src="about:blank" width="100%" height="600px" frameborder="0"></iframe>
+</section>
+           <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center">Every week from Monday to Friday I work a few hours on the projects, and on weekends I work with more time ☕</div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+
+        <section id="tab-configuraciones" class="tab-content" tabindex="0">
+             <header>
+                 <h1>Configuration and Tools</h1>
+                 <p class="subtitle">Automated management system</p>
+                 <button class="theme-selector" title="Select the style for this tab, you can choose different for each tab" onclick="toggleThemeDropdown('tab-configuraciones')">🎨</button>
+             </header>
+
+            <div class="content-grid">
+              <section class="card">
+                  <h2>Tab Selection Visibility</h2>
+                  <p class="description">Tab interface configurations saved to <code>Json/config_web.json</code></p>
+                  <div class="control-group">
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="showIndex" checked>
+                          <span>🗃️ Index</span>
+                      </label>
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="showIniGenerator" checked>
+                          <span>🖋️ INI Generator</span>
+                      </label>
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="showDynamic" checked>
+                          <span>🔮 Dynamic Info Extractor</span>
+                      </label>
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="showSkynet" checked>
+                          <span>💃 Quick JSON Modifier</span>
+                      </label>
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="showChim" checked>
+                          <span>📔 Preset Sandbox</span>
+                      </label>
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="showMemorias" checked>
+                          <span>📃 Log Viewer</span>
+                      </label>
+                      <label class="checkbox-container">
+                      <input type="checkbox" id="showNews" checked>
+                      <span>😸 News</span>
+                      </label>
+                      </div>
+                  <div class="button-group">
+                      <button class="btn btn-primary" id="saveWebConfig">Save Web Configurations</button>
+                      <button class="btn btn-secondary" id="resetWebConfig">Restore Defaults</button>
+                  </div>
+                  <div class="status" id="webConfigStatus">Configuration ready</div>
+                  <div class="info-card">
+                      <p>From here you can activate or deactivate the tabs you want to have active or that you will use more. I left this option for those who don't want to read so much information or won't use all the elements. Also, I used a system similar to the advanced MCM of Ostim to activate tabs depending on whether you have the mod installed or not.</p>
+                  </div>
+              </section>
+
+              <section class="card" id="iniConfigurationWipCard">
+                  <div class="ini-wip-overlay" id="iniWipOverlay" role="button" tabindex="0" aria-label="WIP: this project configuration table is not completely finished yet.">
+                      <div class="ini-wip-overlay-badge">🔏</div>
+                  </div>
+                  <h2>INI Configuration WIP</h2>
+                  <p class="description">Changes are saved to <code>ini/configuration.ini</code></p>
+<div style="background: rgba(0, 0, 0, 0.2); padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 0.9em; color: #f97316;">
+Area still under development, it is recommended not to touch.
+</div>
+                  <div class="control-group">
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="enableMod" checked />
+                          <span>Enable Main Mod</span>
+                      </label>
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="debugMode" />
+                          <span>Debug Mode</span>
+                      </label>
+                      <label class="checkbox-container">
+                          <input type="checkbox" id="autoSave" checked />
+                          <span>Auto-save changes</span>
+                      </label>
+                  </div>
+                  <div class="control-group">
+                      <label class="slider-label">
+                          Sound Volume: <span id="volumeValue">80</span>%
+                      </label>
+                      <input type="range" id="volumeSlider" min="0" max="100" value="80" />
+                  </div>
+                  <div class="control-group">
+                      <label class="slider-label">
+                          Update frequency: <span id="frequencyValue">5</span>s
+                      </label>
+                      <input type="range" id="frequencySlider" min="1" max="10" value="5" />
+                  </div>
+                  <div class="button-group">
+                      <button class="btn btn-primary" id="saveIni">Save INI Configuration</button>
+                      <button class="btn btn-secondary" id="resetIni">Restore Defaults</button>
+                  </div>
+                  <div class="status" id="iniStatus">Configuration ready</div>
+              </section>
+
+              <section class="card">
+                   <h2>Port Configuration<span id="portBadge" class="port-badge">Current Port: <span id="portNumber">Loading...</span></span></h2>
+                   <p class="description">Configure your port personally, only recommended in case you already use the default port</p>
+                  <div class="control-group port-inline" style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+                      <label for="portInput" class="form-label" style="flex: none;">Server Port</label>
+                      <input type="number" id="portInput" class="form-control" style="flex: 1;" min="0" max="65535" placeholder="Enter port number">
+                  </div>
+                  <div id="portError" class="error-message" style="color: red; font-size: 0.9em; margin-top: 5px; display: none;"></div>
+                  <p class="info-text">You can choose from 0 to 65535 as a port, but remember that the PC generally uses those from 0 to 1024 by default (used for printers, LAN ports, etc.). For me, ports 6050, 6051... are always free, but it's your decision. <span class="port-warning">I only recommend changing this port if 6050 is already being used (which has a probability of 0.001526%)</span> and you need to use another. Never use 8080, 49912, 8020, 7860... "This dynamic port feature in my project took me two full days to implement Hahahahah 😹"</p>
+                  <div class="button-group">
+                      <button class="btn btn-primary btn-full-width" id="savePortBtn">Save and restart with new port</button>
+                  </div>
+                  <div class="status" id="portStatus" style="background: rgba(0, 188, 212, 0.2);">Once pressed, the new one will open on its own.</div>
+              </section>
+
+              <section class="card">
+                  <h2>Licenses and Media</h2>
+                  <p>In this section, most of the licenses with which the project works are presented, we have some licenses and some of the sounds that are used.</p>
+                  <div class="license-buttons" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                  <button class="btn btn-secondary" id="btn-python-license" onclick="openLicenseModal('python', 'Python Embeddable License')">Python Embeddable License</button>
+                  <button class="btn btn-secondary" id="btn-frozen-license" onclick="openLicenseModal('frozen', 'cx_Freeze License')">Frozen Application License</button>
+                  <button class="btn btn-secondary" id="btn-john95ac-license" onclick="openLicenseModal('mit', 'John95AC MIT License')">John95AC MIT License</button>
+                  <button class="btn btn-secondary" id="btn-sound-credits" onclick="openLicenseModal('sound', 'Sound Credits')">Sound Credits</button>
+                  </div>
+                  <div class="thank-you-box">
+                      <p>I also take the opportunity to thank all the mod creators and Skyrim players who, over more than 14 years, have shared their Skyrim experience by creating tutorials, providing support, giving advice or ideas. Thank you very much; without your help many projects would not be possible. Thank you.</p>
+                  </div>
+              </section>
+            </div>
+
+            <footer style="display: flex; justify-content: space-between; align-items: center;"><div class="footer-left">⚙️ <strong>OBody NG PDA</strong><br>© 2025 John1995ac. MIT License. Open source project.</div><div class="footer-center">System created with HTML, JS, CSS, Python and C++. I hope you enjoy the mods as much as I enjoyed creating them 🐈</div><div>Developed with ❤️ for the Skyrim modding community</div></footer>
+        </section>
+
+        <!-- NUEVA PESTAÑA: NPC Tracking Detection Range -->
+        <section id="npc-tracking-detection" class="tab-content">
+            <h2>NPC Detection Range Configuration</h2>
+            <div class="control-group">
+                <label for="detectionRadioSlider">Detection Range (1M - 10M)</label>
+                <div class="slider-container">
+                    <input type="range" id="detectionRadioSlider" min="1" max="10" value="5" class="slider">
+                    <span id="detectionRadioValue">5</span> M
+                </div>
+                <p class="info-text">5M = 500 units in INI | Current INI value: <span id="detectionRadioIni">500</span></p>
+            </div>
+            <div class="button-group">
+                <button id="saveDetectionRadio" class="btn btn-primary">Save Detection Radius</button>
+                <button id="resetDetectionRadio" class="btn btn-secondary">Reset to Default (500)</button>
+            </div>
+            <div id="detectionRadioStatus" class="status-message"></div>
+        </section>
+    </div>
+
+    <div id="jsonFavoritesModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content small-modal">
+            <div class="modal-header">
+                <h3>Key Elements Addons</h3>
+                <button id="jsonFavoritesCleanBtn" class="btn btn-secondary btn-small" style="margin-left: auto; margin-right: 8px;">Clean</button>
+                <button class="modal-close" onclick="closeJsonFavoritesModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="favoritos-section" id="jsonFavoritosSectionPresets">
+                    <div class="favoritos-header" onclick="toggleJsonFavoritosCollapse('presets')">
+                        <h2>💃 Favorites Presets - <span id="jsonFavoritosCountPresets">0</span> total</h2>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="jsonFavoritosPresetsContent" class="favoritos-content collapsed">
+                        <div class="preset-search">
+                            <input type="text" id="jsonFavoritosSearchInline" placeholder="Search favorites Presets..." class="preset-search-input">
+                        </div>
+                        <div id="jsonFavoritosListPresets" class="preset-list-compact">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="favoritos-section" id="jsonFavoritosSectionNpc" style="margin-top: 20px;">
+                    <div class="favoritos-header" onclick="toggleJsonFavoritosCollapse('npc')">
+                        <h2>👥 Favorites NPC - <span id="jsonFavoritosNpcCount">0</span> total</h2>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="jsonFavoritosNpcContent" class="favoritos-content collapsed">
+                        <div class="preset-search">
+                            <input type="text" id="jsonFavoritosNpcSearchInline" placeholder="Search favorites NPC..." class="preset-search-input">
+                        </div>
+                        <div id="jsonFavoritosNpcList" class="preset-list-compact">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="favoritos-section" id="jsonFavoritosSectionOutfits" style="margin-top: 20px;">
+                    <div class="favoritos-header" onclick="toggleJsonFavoritosCollapse('outfits')">
+                        <h2>👗 Favorites Outfits - <span id="jsonFavoritosOutfitsCount">0</span> total</h2>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="jsonFavoritosOutfitsContent" class="favoritos-content collapsed">
+                        <div class="preset-search">
+                            <input type="text" id="jsonFavoritosOutfitsSearchInline" placeholder="Search favorites Outfits..." class="preset-search-input">
+                        </div>
+                        <div id="jsonFavoritosOutfitsList" class="preset-list-compact">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="favoritos-section personalizados-section" id="jsonFavoritosSectionNpcNameCustom" style="margin-top: 20px; display: none;">
+                    <div class="favoritos-header">
+                        <h2>Custom NPC Name Element</h2>
+                    </div>
+                    <div class="favoritos-content personalizados-content">
+                        <input id="jsonFavoritosNpcNameCustom" class="preset-search-input personalizados-input" type="text" placeholder="Enter NPC name element...">
+                    </div>
+                </div>
+
+                <div class="favoritos-section personalizados-section" id="jsonFavoritosSectionOutfitNameCustom" style="margin-top: 20px; display: none;">
+                    <div class="favoritos-header">
+                        <h2>Custom Outfit Name Element</h2>
+                    </div>
+                    <div class="favoritos-content personalizados-content">
+                        <input id="jsonFavoritosOutfitNameCustom" class="preset-search-input personalizados-input" type="text" placeholder="Enter outfit name element...">
+                    </div>
+                </div>
+
+                <div class="favoritos-section" id="jsonFavoritosSectionFactionsLibrary" style="margin-top: 20px; display: none;">
+                    <div class="favoritos-header" onclick="toggleJsonFavoritosCollapse('factions')">
+                        <h2>⚔️ Faction Custom Library - <span id="jsonFactionsLibraryCount">0</span> total</h2>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="jsonFactionsLibraryContent" class="favoritos-content collapsed">
+                        <div class="preset-search">
+                            <div class="btn-group-compact">
+                                <button class="btn-mini btn-secondary" id="jsonLoadMemoriFFactionsBtn">⚔️ Faction From NPCs around you (0)</button>
+                                <button class="btn-mini btn-secondary" id="jsonLoadCsvFactionsBtn">⚔️ Faction From CSV Base Game (0)</button>
+                            </div>
+                            <input type="text" id="jsonFactionsLibrarySearchInline" placeholder="Search factions..." class="preset-search-input">
+                        </div>
+                        <div id="jsonFactionsLibraryList" class="preset-list-compact">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="favoritos-section personalizados-section" id="jsonFavoritosSectionFactionCustom" style="margin-top: 20px; display: none;">
+                    <div class="favoritos-header">
+                        <h2>Faction NPC Elements</h2>
+                    </div>
+                    <div class="favoritos-content personalizados-content">
+                        <input id="jsonFavoritosFactionNameCustom" class="preset-search-input personalizados-input" type="text" placeholder="Enter faction name element...">
+                    </div>
+                </div>
+
+                <div class="favoritos-section personalizados-section" id="jsonFavoritosSectionRace" style="margin-top: 20px; display: none;">
+                    <div class="favoritos-header">
+                        <h2>List of races Elements</h2>
+                    </div>
+                    <div class="favoritos-content personalizados-content">
+                        <select id="jsonFavoritosRaceSelect" class="preset-search-input personalizados-input">
+                            <option value="">Select race...</option>
+                            <option value="NordRace">NordRace</option>
+                            <option value="ImperialRace">ImperialRace</option>
+                            <option value="BretonRace">BretonRace</option>
+                            <option value="RedguardRace">RedguardRace</option>
+                            <option value="DarkElfRace">DarkElfRace</option>
+                            <option value="HighElfRace">HighElfRace</option>
+                            <option value="WoodElfRace">WoodElfRace</option>
+                            <option value="OrcRace">OrcRace</option>
+                            <option value="KhajiitRace">KhajiitRace</option>
+                            <option value="ArgonianRace">ArgonianRace</option>
+                            <option value="ElderRace">ElderRace</option>
+                            <option value="NordRaceVampire">NordRaceVampire</option>
+                            <option value="ImperialRaceVampire">ImperialRaceVampire</option>
+                            <option value="BretonRaceVampire">BretonRaceVampire</option>
+                            <option value="RedguardRaceVampire">RedguardRaceVampire</option>
+                            <option value="DarkElfRaceVampire">DarkElfRaceVampire</option>
+                            <option value="HighElfRaceVampire">HighElfRaceVampire</option>
+                            <option value="WoodElfRaceVampire">WoodElfRaceVampire</option>
+                            <option value="OrcRaceVampire">OrcRaceVampire</option>
+                            <option value="KhajiitRaceVampire">KhajiitRaceVampire</option>
+                            <option value="ArgonianRaceVampire">ArgonianRaceVampire</option>
+                            <option value="ElderRaceVampire">ElderRaceVampire</option>
+                            <option value="00UBE_HighElfRace">00UBE_HighElfRace</option>
+                            <option value="00UBE_BretonRace">00UBE_BretonRace</option>
+                            <option value="00UBE_NordRace">00UBE_NordRace</option>
+                            <option value="00UBE_ImperialRace">00UBE_ImperialRace</option>
+                            <option value="00UBE_RedguardRace">00UBE_RedguardRace</option>
+                            <option value="00UBE_DarkElfRace">00UBE_DarkElfRace</option>
+                            <option value="00UBE_WoodElfRace">00UBE_WoodElfRace</option>
+                            <option value="00UBE_OrcRace">00UBE_OrcRace</option>
+                            <option value="00UBE_KhajiitRace">00UBE_KhajiitRace</option>
+                            <option value="00UBE_ArgonianRace">00UBE_ArgonianRace</option>
+                            <option value="00UBE_ElderRace">00UBE_ElderRace</option>
+                            <option value="00UBE_HighElfRaceVampire">00UBE_HighElfRaceVampire</option>
+                            <option value="00UBE_BretonRaceVampire">00UBE_BretonRaceVampire</option>
+                            <option value="00UBE_ImperialRaceVampire">00UBE_ImperialRaceVampire</option>
+                            <option value="00UBE_RedguardRaceVampire">00UBE_RedguardRaceVampire</option>
+                            <option value="00UBE_DarkElfRaceVampire">00UBE_DarkElfRaceVampire</option>
+                            <option value="00UBE_WoodElfRaceVampire">00UBE_WoodElfRaceVampire</option>
+                            <option value="00UBE_NordRaceVampire">00UBE_NordRaceVampire</option>
+                            <option value="00UBE_OrcRaceVampire">00UBE_OrcRaceVampire</option>
+                            <option value="00UBE_ElderRaceVampire">00UBE_ElderRaceVampire</option>
+                            <option value="00UBE_KhajiitRaceVampire">00UBE_KhajiitRaceVampire</option>
+                            <option value="00UBE_ArgonianRaceVampire">00UBE_ArgonianRaceVampire</option>
+                            <option value="custom">custom</option>
+                        </select>
+                        <input id="jsonFavoritosRaceCustom" class="preset-search-input personalizados-input" type="text" placeholder="Enter custom race element..." style="margin-top: 8px; display: none;" disabled>
+                    </div>
+                </div>
+
+                <div class="favoritos-section personalizados-section" id="jsonFavoritosSectionPluginCustom">
+                    <div class="favoritos-header">
+                        <h2>Custom Plugin Name Key Elements</h2>
+                    </div>
+                    <div class="favoritos-content personalizados-content">
+                        <input id="jsonFavoritosPluginNameCustom" class="preset-search-input personalizados-input" type="text" placeholder="Enter plugin name key element...">
+                    </div>
+                </div>
+
+                <div class="favoritos-section personalizados-section" id="jsonFavoritosSectionFormIdCustom">
+                    <div class="favoritos-header">
+                        <h2>Custom FormID Key Elements</h2>
+                    </div>
+                    <div class="favoritos-content personalizados-content">
+                        <input id="jsonFavoritosFormIdCustom" class="preset-search-input personalizados-input" type="text" placeholder="Enter FormID key element...">
+                    </div>
+                </div>
+
+                <div class="favoritos-section personalizados-section" id="jsonFavoritosSectionSelectedPresets">
+                    <div class="favoritos-header">
+                        <h2 id="jsonFavoritosSelectedPresetsTitle">Selected Presets</h2>
+                        <button id="jsonFavoritosSelectedPresetsClearBtn" class="btn btn-secondary btn-small" style="margin-left: auto;">✖</button>
+                    </div>
+                    <div class="favoritos-content personalizados-content">
+                        <select id="jsonFavoritosStateSelect" class="preset-search-input personalizados-input" style="display: none; margin-bottom: 8px;">
+                            <option value="true">true</option>
+                            <option value="false">false</option>
+                        </select>
+                        <textarea id="jsonFavoritosSelectedPresets" class="preset-search-input personalizados-textarea" placeholder="Type or select presets..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-actions-bottom">
+                    <button id="jsonFavoritesAddKeyBtn" class="btn btn-primary btn-small">Add key</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Example Image -->
+    <div id="exampleModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header example-modal-header">
+                <div class="example-header-main">
+                    <div class="example-tabs">
+                        <button type="button" id="exampleTabVisual" class="btn-mini btn-primary" onclick="setExampleTab('visual')">Visual rules application</button>
+                        <button type="button" id="exampleTabCat" class="btn-mini btn-secondary" onclick="setExampleTab('cat')">Didactic explanation of JSON Master of Obody NG, explained by a cat</button>
+                    </div>
+                    <h3 id="exampleModalTitle">Visual rules application</h3>
+                </div>
+                <button class="modal-close" onclick="closeExampleModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="exampleVisualContent">
+                    <img src="Data/example.png" alt="Visual rules example" class="modal-image">
+                </div>
+                <div id="exampleCatContent" style="display: none;">
+                    <div class="cat-intro-text">
+                        Throughout all the time I've worked on this project, with the advice of many users, I've gradually learned how to use JSON. Here we'll leave an interesting guide on how to handle the master JSON, what to add, and a summary in a didactic way on how to modify or manually add rules. Remember that all this information is mostly from my usage experience, so I'll add more of my experiences and those of many who have communicated them to me. You can now go to this link and read the complete manual, it's very extensive:
+                        <a href="https://www.nexusmods.com/skyrimspecialedition/articles/4756" target="_blank">the complete manual</a>.
+                    </div>
+                    <div class="cat-json-layout">
+                        <div class="cat-json-left">
+                            <div class="cat-panel-title cat-panel-title-with-pill">
+                                <span>OBody_presetDistributionConfig.json example</span>
+                                <span id="catSelectedKeyPill" class="cat-selected-key-pill" aria-live="polite"></span>
+                            </div>
+                            <div id="catJsonSample" class="json-viewer">Loading example JSON...</div>
+                        </div>
+                        <div class="cat-json-right">
+                            <div class="cat-panel-title">Master JSON Keys</div>
+                            <div id="catJsonKeysList" class="cat-keys-list"></div>
+                            <div class="cat-key-details">
+                                <div class="cat-panel-title">Key explanation and JSON section</div>
+                                <div id="catKeyExplanation" class="cat-key-explanation">Select a key to see its explanation.</div>
+                                <div id="catKeyJsonPreview" class="json-viewer">Select a key to see its JSON part from the example.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Expand Modal -->
+    <div id="logExpandModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="logExpandTitle">Log Viewer</h3>
+                <button class="modal-close" onclick="closeLogExpandModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="logExpandContent" class="log-textarea-large" style="white-space: pre-wrap;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="jsonKeyDeleteModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content small-modal">
+            <div class="modal-header">
+                <h3>Delete JSON element</h3>
+                <button class="modal-close" onclick="closeJsonKeyDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-message" id="jsonKeyDeleteMessage">
+                    Do you want to delete this element from your JSON?
+                </p>
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" id="cancelJsonKeyDeleteBtn">Cancel</button>
+                    <button class="btn btn-primary" id="confirmJsonKeyDeleteBtn">Yes, delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skyrim Connection Lost Modal -->
+    <div id="skyrimConnectionLostModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content small-modal">
+            <div class="modal-header">
+                <h3>Skyrim Connection Lost</h3>
+            </div>
+            <div class="modal-body">
+                <p class="modal-message">Skyrim has closed. The page will shut down in 3 seconds.<br>If you want to continue, use the direct access for offline mode.</p>
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" id="reloadWebpageBtn">Reload Webpage to close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/holidays-manager.js"></script>
+    <script src="js/theme-ball.js"></script>
+    <!-- Scripts de efectos festivos -->
+    <script src="js/christmas-effects.js"></script>
+    <script src="js/easter-effects.js"></script>
+    <script src="js/halloween-effects.js"></script>
+    <script src="js/new-year-effects.js"></script>
+    <script src="js/saint-patrick-effects.js"></script>
+    <script src="app.js"></script>
+    <script src="js/audio-ball.js"></script>
+    <script src="js/support-ball.js"></script>
+    <script src="js/social-links-ball.js"></script>
+    <script src="js/Sandbox-ball.js"></script>
+    <script>
+        document.getElementById('toggleDescription').addEventListener('click', function() {
+            const container = document.getElementById('descriptionContainer');
+            if (container.style.display === 'none' || container.style.display === '') {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
