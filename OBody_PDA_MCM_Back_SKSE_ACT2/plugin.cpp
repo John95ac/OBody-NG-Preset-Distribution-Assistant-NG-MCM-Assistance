@@ -1149,7 +1149,7 @@ OBodyPDAPathsResult DetectAllOBodyPDAPaths() {
     
     WriteToAdvancedLog("================================================================", __LINE__);
     WriteToAdvancedLog("  OBODY PDA - COMPLETE PATH DETECTION SYSTEM", __LINE__);
-    WriteToAdvancedLog("  Version: 3.8.0", __LINE__);
+    WriteToAdvancedLog("  Version: 3.8.1", __LINE__);
     WriteToAdvancedLog("  Time: " + GetCurrentTimeString(), __LINE__);
     WriteToAdvancedLog("================================================================", __LINE__);
     WriteToAdvancedLog("", __LINE__);
@@ -3368,7 +3368,7 @@ void InitializePlugin() {
 
         WriteToAdvancedLog("OBody PDA Advanced Manager - Starting Complete Detection...", __LINE__);
         WriteToAdvancedLog("========================================", __LINE__);
-        WriteToAdvancedLog("OBody PDA Advanced Manager - v3.8.0", __LINE__);
+        WriteToAdvancedLog("OBody PDA Advanced Manager - v3.8.1", __LINE__);
         WriteToAdvancedLog("Started: " + GetCurrentTimeString(), __LINE__);
         WriteToAdvancedLog("========================================", __LINE__);
         
@@ -3564,25 +3564,16 @@ void MessageListener(SKSE::MessagingInterface::Message* message) {
 }
 
 void SetupLog() {
-    auto logsFolder = SKSE::log::log_directory();
-    if (!logsFolder) {
-        SKSE::stl::report_and_fail("SKSE log_directory not provided, logs disabled.");
-        return;
-    }
-    auto pluginName = SKSE::PluginDeclaration::GetSingleton()->GetName();
-    auto logFilePath = *logsFolder / std::format("{}.log", pluginName);
-    auto fileLoggerPtr = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.string(), true);
-    auto loggerPtr = std::make_shared<spdlog::logger>("log", std::move(fileLoggerPtr));
+    auto loggerPtr = std::make_shared<spdlog::logger>("log");
     spdlog::set_default_logger(std::move(loggerPtr));
-    spdlog::set_level(spdlog::level::trace);
-    spdlog::flush_on(spdlog::level::info);
+    spdlog::set_level(spdlog::level::off);
 }
 
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     SKSE::Init(a_skse);
     SetupLog();
 
-    logger::info("OBody PDA Advanced Manager v3.8.0 - Starting...");
+    logger::info("OBody PDA Advanced Manager v3.8.1 - Starting...");
     
     auto paths = GetAllOBodyLogsPaths();
     try {
@@ -3591,7 +3582,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     } catch (...) {}
 
     WriteToAdvancedLog("========================================", __LINE__);
-    WriteToAdvancedLog("OBody PDA Advanced Manager v3.8.0", __LINE__);
+    WriteToAdvancedLog("OBody PDA Advanced Manager v3.8.1", __LINE__);
     WriteToAdvancedLog("Started: " + GetCurrentTimeString(), __LINE__);
     WriteToAdvancedLog("========================================", __LINE__);
 
@@ -3605,7 +3596,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
 
 constinit auto SKSEPlugin_Version = []() {
     SKSE::PluginVersionData v;
-    v.PluginVersion({3, 8, 0});
+    v.PluginVersion({3, 8, 1});
     v.PluginName("OBody PDA Advanced Manager");
     v.AuthorName("John95AC");
     v.UsesAddressLibrary();
