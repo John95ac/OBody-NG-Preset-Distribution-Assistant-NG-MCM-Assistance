@@ -548,6 +548,8 @@ const shortcutsStatus = document.getElementById('shortcutsStatus');
 const iniStatus = document.getElementById('iniStatus');
 const portInput = document.getElementById('portInput');
 const savePortBtn = document.getElementById('savePortBtn');
+const updateRuteBtn = document.getElementById('updateRuteBtn');
+const skyrimStatusDot = document.getElementById('skyrimStatus');
 const portStatus = document.getElementById('portStatus');
 let portMasterData = null;
 const PORT_STATUS_DEFAULT_TEXT = portStatus ? portStatus.textContent : '';
@@ -556,6 +558,141 @@ let selfServiceName = '';
 let lastPortInvalid = false;
 let savePortInProgress = false;
 let portUiLoaded = false;
+
+const DEV_MODE_STORAGE_KEY = 'obody_dev_mode_unlocked';
+let skyrimStatusUnlockClickTimes = [];
+let skyrimStatusDevExtraClickCount = 0;
+let playerNameCache = '';
+let playerNameCacheLastFetchMs = 0;
+const uiAudioCache = {};
+
+function isDevModeUnlocked() {
+    try {
+        return sessionStorage.getItem(DEV_MODE_STORAGE_KEY) === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+function requestPlayerNameRefresh() {
+    const now = Date.now();
+    if ((now - playerNameCacheLastFetchMs) < 1500) return;
+    playerNameCacheLastFetchMs = now;
+    fetch('Json/Act2_Manager.json', { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+            const name = data && data.player && typeof data.player.name === 'string' ? data.player.name.trim() : '';
+            playerNameCache = name || '';
+        })
+        .catch(() => {});
+}
+
+function getPlayerNameCached() {
+    return playerNameCache || '';
+}
+
+function formatWithName(name, message) {
+    const n = (name || '').trim();
+    return n ? `${n} ${message}` : message;
+}
+
+function getUiAudio(path) {
+    try {
+        if (!uiAudioCache[path]) {
+            const audio = new Audio(path);
+            audio.preload = 'auto';
+            audio.load();
+            uiAudioCache[path] = audio;
+        }
+        return uiAudioCache[path];
+    } catch (_) {
+        return null;
+    }
+}
+
+function playUiSound(path) {
+    try {
+        const audio = getUiAudio(path) || new Audio(path);
+        try { audio.pause(); } catch (_) {}
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+    } catch (_) {}
+}
+
+function resetSkyrimStatusEasterEggState() {
+    skyrimStatusUnlockClickTimes = [];
+    skyrimStatusDevExtraClickCount = 0;
+}
+
+function lockDevMode() {
+    try {
+        sessionStorage.removeItem(DEV_MODE_STORAGE_KEY);
+    } catch (_) {}
+    resetSkyrimStatusEasterEggState();
+    applyDevModeUi();
+}
+
+function applyDevModeUi() {
+    if (!updateRuteBtn) return;
+    if (isDevModeUnlocked()) {
+        updateRuteBtn.classList.remove('dev-locked');
+    } else {
+        updateRuteBtn.classList.add('dev-locked');
+    }
+}
+
+applyDevModeUi();
+requestPlayerNameRefresh();
+
+window.addEventListener('beforeunload', lockDevMode);
+window.addEventListener('pagehide', lockDevMode);
+
+if (skyrimStatusDot) {
+    skyrimStatusDot.addEventListener('click', () => {
+        const now = Date.now();
+        requestPlayerNameRefresh();
+        const playerName = getPlayerNameCached();
+        if (!isDevModeUnlocked()) {
+            skyrimStatusUnlockClickTimes = skyrimStatusUnlockClickTimes.filter(t => (now - t) <= 2500);
+            skyrimStatusUnlockClickTimes.push(now);
+            const count = skyrimStatusUnlockClickTimes.length;
+            if (count === 3) {
+                showToast(formatWithName(playerName, 'why are you pressing this?'), '#f97316', 2500);
+                return;
+            }
+            if (count === 7) {
+                showToast(playerName ? `ok ${playerName} you're close, keep going a bit more` : `ok you're close, keep going a bit more`, '#f97316', 2500);
+                return;
+            }
+            if (count === 10) {
+                try { sessionStorage.setItem(DEV_MODE_STORAGE_KEY, '1'); } catch (_) {}
+                applyDevModeUi();
+                resetSkyrimStatusEasterEggState();
+                playUiSound('Sound/robot_talk.wav');
+                showToast(`Developer mode unlocked - it's only temporary${playerName ? ' ' + playerName : ''}`, '#10b981', 3000);
+            }
+            return;
+        }
+
+        skyrimStatusDevExtraClickCount += 1;
+        if (skyrimStatusDevExtraClickCount % 5 !== 0) return;
+
+        const step = skyrimStatusDevExtraClickCount / 5;
+        if (step === 1) {
+            playUiSound('Sound/robot_talk.wav');
+            showToast(formatWithName(playerName, "you're already in Developer mode...."), '#f97316', 3000);
+            return;
+        }
+        if (step === 2) {
+            playUiSound('Sound/rolling-dice-003.wav');
+            showToast('Think about your mouse, it will wear out and this will only make noises', '#f97316', 4000);
+            return;
+        }
+
+        playUiSound('Sound/robot_talk.wav');
+        showToast(formatWithName(playerName, "seems you like the sound, good. I'll leave it, I like it too"), '#f97316', 4000);
+    });
+}
 
 if (volumeSlider && volumeValue) {
     volumeSlider.addEventListener('input', () => {
@@ -609,6 +746,29 @@ if (savePortBtn) {
     });
 }
 
+if (updateRuteBtn) {
+    updateRuteBtn.addEventListener('click', async () => {
+        const audio = new Audio('Sound/robot_talk.wav');
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+        try {
+            const response = await fetch(`${BASE_URL}/update-server-rute`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const result = await response.json().catch(() => ({}));
+            if (result.status === 'success') {
+                showToast('Server path updated', '#10b981');
+            } else {
+                showToast(result.message || 'Error updating server path', '#ef4444');
+            }
+        } catch (error) {
+            showToast('Connection error', '#ef4444');
+        }
+    });
+}
+
 if (portInput) {
     portInput.addEventListener('input', () => {
         validatePort();
@@ -632,6 +792,7 @@ if (resetIniBtn) {
 if (shutdownBtn) {
     shutdownBtn.addEventListener('click', async () => {
         if (confirm('Shut down the server? The page will stop working.')) {
+            lockDevMode();
             try {
                 const response = await fetch(`${BASE_URL}/shutdown`, {
                     method: 'POST',
@@ -10589,6 +10750,7 @@ function updateSkyrimStatus() {
         })
         .catch(error => {
             console.error('Error checking Skyrim status:', error);
+            lockDevMode();
             const statusElement = document.getElementById('skyrimStatus');
             if (statusElement) {
                 const colorClass = previousSkyrimStatus === 'green' ? 'skyrim-yellow' : 'skyrim-red';

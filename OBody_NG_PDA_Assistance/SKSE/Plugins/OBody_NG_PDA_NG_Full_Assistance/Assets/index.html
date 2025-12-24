@@ -192,7 +192,7 @@
 
                         <div class="control-group">
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                                <label for="presets" class="form-label" style="margin: 0;">Presets</label>
+                                <label for="presets" class="form-label" style="margin: 0;">Presets or Data</label>
                                 <button type="button" class="btn-mini btn-secondary" id="clearPresetsBtn" title="Clear presets field" onclick="clearPresetsField()">clean</button>
                             </div>
                             <input type="text" id="presets" class="form-control" placeholder="E.g.: PresetA,PresetB,PresetC">
@@ -923,7 +923,11 @@ Area still under development, it is recommended not to touch.
               </section>
 
               <section class="card">
-                   <h2>Port Configuration<span id="portBadge" class="port-badge">Current Port: <span id="portNumber">Loading...</span></span></h2>
+                   <h2 style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                       Port Configuration
+                       <button class="btn btn-secondary btn-small dev-locked" id="updateRuteBtn" style="padding: 4px 8px; font-size: 0.75rem;">Update Path</button>
+                       <span id="portBadge" class="port-badge" style="margin-left: auto;">Current Port: <span id="portNumber">Loading...</span></span>
+                   </h2>
                    <p class="description">Configure your port personally, only recommended in case you already use the default port</p>
                   <div class="control-group port-inline" style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
                       <label for="portInput" class="form-label" style="flex: none;">Server Port</label>

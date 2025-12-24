@@ -2420,6 +2420,31 @@ def sync_backup_folders():
             log_error(f"Error in sync_backup_folders: {str(e)}")
             time.sleep(10)
 
+def _write_server_rute_ini():
+    rute_file = Path('ini/Rute.ini')
+    config = configparser.ConfigParser()
+    if rute_file.exists():
+        try:
+            config.read(rute_file, encoding='utf-8')
+        except Exception:
+            config = configparser.ConfigParser()
+
+    if 'Server_rute' not in config:
+        config.add_section('Server_rute')
+
+    try:
+        resolved_server_path = str(Path(__file__).resolve())
+    except Exception:
+        resolved_server_path = os.path.abspath(__file__)
+
+    config.set('Server_rute', 'rute', resolved_server_path)
+
+    rute_file.parent.mkdir(exist_ok=True)
+    with open(rute_file, 'w', encoding='utf-8') as f:
+        config.write(f)
+
+    return resolved_server_path
+
 class ModManagerHandler(http.server.SimpleHTTPRequestHandler):
     
     def send_json_response(self, data):
@@ -2877,6 +2902,8 @@ class ModManagerHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json_response(response)
         elif self.path == '/run-folder-script':
             self.run_folder_script()
+        elif self.path == '/update-server-rute':
+            self.update_server_rute()
         elif self.path == '/open-manager-mcm-folder':
             self.open_manager_mcm_folder()
         elif self.path == '/run-open-script':
@@ -5369,57 +5396,201 @@ Write-Host "Mod root folder shortcut created successfully"
                 config.write(f)
 
             ensure_port_master_json(port)
-            self.send_json_response({'status': 'success'})
 
-            ps1_path = Path('tools/Restart_server.ps1').absolute()
-            subprocess.Popen(
-                ['powershell.exe', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', str(ps1_path)],
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                shell=False
-            )
-            os._exit(0)
+            try:
+                new_port = str(int(port))
+
+                port_ini_path = Path('ini/PORT.ini')
+                try:
+                    lines = port_ini_path.read_text(encoding='utf-8').splitlines(True)
+                except Exception:
+                    lines = []
+
+                out_lines = []
+                replaced = False
+                for line in lines:
+                    if line.startswith('PORT = ') and not replaced:
+                        parts = line.split(' = ', 1)
+                        if len(parts) == 2:
+                            comment = parts[1].split(' ', 1)
+                            if len(comment) == 2:
+                                out_lines.append(f'PORT = {new_port} {comment[1]}')
+                            else:
+                                out_lines.append(f'PORT = {new_port}\n')
+                        else:
+                            out_lines.append(line)
+                        replaced = True
+                    else:
+                        out_lines.append(line)
+
+                if not replaced:
+                    out_lines.append(f'PORT = {new_port}\n')
+
+                try:
+                    port_ini_path.parent.mkdir(exist_ok=True)
+                except Exception:
+                    pass
+                port_ini_path.write_text(''.join(out_lines), encoding='utf-8')
+
+                try:
+                    Path('Json').mkdir(exist_ok=True)
+                except Exception:
+                    pass
+                try:
+                    with open(Path('Json/port.json'), 'w', encoding='utf-8') as f:
+                        json.dump({'port': int(port)}, f)
+                except Exception:
+                    pass
+                try:
+                    manager_mcm_dir = None
+                    try:
+                        rute_cfg = configparser.ConfigParser()
+                        rute_cfg.read(Path('ini/Rute.ini'), encoding='utf-8')
+                        skse_candidate = None
+                        if 'SKSE_logs' in rute_cfg:
+                            for _, value in rute_cfg['SKSE_logs'].items():
+                                p = Path(str(value))
+                                if p.exists() and p.is_dir():
+                                    skse_candidate = p
+                                    break
+                        if skse_candidate is not None:
+                            manager_mcm_dir = skse_candidate.parent / 'Manager_MCM'
+                    except Exception:
+                        manager_mcm_dir = None
+                    if manager_mcm_dir is None:
+                        manager_mcm_dir = _get_manager_mcm_dir()
+
+                    backup_port_json = manager_mcm_dir / 'PDA' / 'Json' / 'port.json'
+                    backup_port_json.parent.mkdir(parents=True, exist_ok=True)
+                    with open(backup_port_json, 'w', encoding='utf-8') as f:
+                        json.dump({'port': int(port)}, f)
+                except Exception:
+                    pass
+
+                try:
+                    create_backup_folders()
+                except Exception as e:
+                    log_error(f"Restart backup failed: {str(e)}")
+                    log_error(traceback.format_exc())
+                    self.send_json_response({'status': 'error', 'message': 'Backup failed; restart aborted'})
+                    return
+
+                self.send_json_response({'status': 'success'})
+
+                standalone_exe = Path(__file__).resolve().parent.parent / 'Standalone Mode' / 'Standalone Mode.exe'
+                subprocess.Popen([str(standalone_exe)], creationflags=subprocess.CREATE_NO_WINDOW, shell=False)
+                os._exit(0)
+            except Exception as e:
+                log_error(f"Restart failed (direct launch): {str(e)}")
+                log_error(traceback.format_exc())
         except Exception as e:
             log_error(f"Error saving port restart: {str(e)}")
             self.send_json_response({'status': 'error', 'message': str(e)})
             return
 
     def restart_server(self):
-        """Execute PowerShell script to restart server"""
+        """Restart server by applying PORT_Restart_server.ini -> PORT.ini and launching Standalone Mode.exe"""
         try:
-            ps1_path = Path('tools/Restart_server.ps1').absolute()
-            if not ps1_path.exists():
-                log_error(f"PowerShell script not found: {ps1_path}")
-                return {'status': 'error', 'message': f'PowerShell script not found: {ps1_path}'}
+            config2 = configparser.ConfigParser()
+            config2.read(Path('ini/PORT_Restart_server.ini'), encoding='utf-8')
+            new_port_raw = config2.get('PORT_new', 'PORT_new')
+            new_port_int = int(new_port_raw)
+            new_port = str(new_port_int)
 
-            log_error(f"Executing PowerShell script: {ps1_path}")
-            subprocess.Popen(
-                ['powershell.exe', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', str(ps1_path)],
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                shell=False
-            )
-            log_error("PS1 launched asynchronously, shutting down server")
+            port_ini_path = Path('ini/PORT.ini')
+            try:
+                lines = port_ini_path.read_text(encoding='utf-8').splitlines(True)
+            except Exception:
+                lines = []
+
+            out_lines = []
+            replaced = False
+            for line in lines:
+                if line.startswith('PORT = ') and not replaced:
+                    parts = line.split(' = ', 1)
+                    if len(parts) == 2:
+                        comment = parts[1].split(' ', 1)
+                        if len(comment) == 2:
+                            out_lines.append(f'PORT = {new_port} {comment[1]}')
+                        else:
+                            out_lines.append(f'PORT = {new_port}\n')
+                    else:
+                        out_lines.append(line)
+                    replaced = True
+                else:
+                    out_lines.append(line)
+
+            if not replaced:
+                out_lines.append(f'PORT = {new_port}\n')
+
+            try:
+                port_ini_path.parent.mkdir(exist_ok=True)
+            except Exception:
+                pass
+            port_ini_path.write_text(''.join(out_lines), encoding='utf-8')
+
+            try:
+                Path('Json').mkdir(exist_ok=True)
+            except Exception:
+                pass
+            try:
+                with open(Path('Json/port.json'), 'w', encoding='utf-8') as f:
+                    json.dump({'port': new_port_int}, f)
+            except Exception:
+                pass
+            try:
+                manager_mcm_dir = None
+                try:
+                    rute_cfg = configparser.ConfigParser()
+                    rute_cfg.read(Path('ini/Rute.ini'), encoding='utf-8')
+                    skse_candidate = None
+                    if 'SKSE_logs' in rute_cfg:
+                        for _, value in rute_cfg['SKSE_logs'].items():
+                            p = Path(str(value))
+                            if p.exists() and p.is_dir():
+                                skse_candidate = p
+                                break
+                    if skse_candidate is not None:
+                        manager_mcm_dir = skse_candidate.parent / 'Manager_MCM'
+                except Exception:
+                    manager_mcm_dir = None
+                if manager_mcm_dir is None:
+                    manager_mcm_dir = _get_manager_mcm_dir()
+
+                backup_port_json = manager_mcm_dir / 'PDA' / 'Json' / 'port.json'
+                backup_port_json.parent.mkdir(parents=True, exist_ok=True)
+                with open(backup_port_json, 'w', encoding='utf-8') as f:
+                    json.dump({'port': new_port_int}, f)
+            except Exception:
+                pass
+
+            try:
+                ensure_port_master_json(new_port_int)
+            except Exception:
+                pass
+            try:
+                create_backup_folders()
+            except Exception as e:
+                log_error(f"Restart backup failed: {str(e)}")
+                log_error(traceback.format_exc())
+                return {'status': 'error', 'message': 'Backup failed; restart aborted'}
+
+            standalone_exe = Path(__file__).resolve().parent.parent / 'Standalone Mode' / 'Standalone Mode.exe'
+            subprocess.Popen([str(standalone_exe)], creationflags=subprocess.CREATE_NO_WINDOW, shell=False)
             os._exit(0)
             return {'status': 'success', 'message': 'Server restart initiated successfully'}
         except Exception as e:
-            log_error(f"Error executing PowerShell script: {str(e)}")
+            log_error(f"Restart failed (direct launch): {str(e)}")
+            log_error(traceback.format_exc())
             return {'status': 'error', 'message': str(e)}
 
     def run_folder_script(self):
         try:
             root_path = None
             try:
-                config = configparser.ConfigParser()
-                rute_ini = Path('ini/Rute.ini')
-                if rute_ini.exists():
-                    config.read(rute_ini, encoding='utf-8')
-                    if 'Server_rute' in config and 'rute' in config['Server_rute']:
-                        pyw_path = Path(config['Server_rute']['rute'])
-                        for parent in pyw_path.parents:
-                            if parent.name.lower() == 'skse':
-                                root_path = parent.parent
-                                break
-            except Exception as e:
-                log_error(f"Error reading Rute.ini for folder script: {e}")
+                root_path = _get_mod_root_dir()
+            except Exception:
+                root_path = None
 
             if not root_path:
                 root_path = get_install_root_folder()
@@ -5440,6 +5611,26 @@ Write-Host "Mod root folder shortcut created successfully"
 
         except Exception as e:
             log_error(f"ERROR executing folder action: {e}")
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'status': 'error',
+                'message': str(e)
+            }).encode('utf-8'))
+
+    def update_server_rute(self):
+        try:
+            resolved_server_path = _write_server_rute_ini()
+
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'status': 'success',
+                'message': resolved_server_path
+            }).encode('utf-8'))
+        except Exception as e:
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -5894,6 +6085,11 @@ if __name__ == '__main__':
 
     update_thread = threading.Thread(target=delayed_update_check, daemon=True)
     update_thread.start()
+
+    try:
+        _write_server_rute_ini()
+    except Exception as e:
+        log_error(f"ERROR updating Server_rute at startup: {e}")
 
     with ThreadedTCPServer(("127.0.0.1", PORT), ModManagerHandler) as httpd:
         httpd.serve_forever()
