@@ -2,7 +2,7 @@
 
 OBody NG PDA Assistance is a high-performance tool suite designed to extend and enhance the OBody preset distribution system. This documentation covers **Act 2 (Data Engine)** and **Act 3 (Interface & Process Management)**, which bridge the gap between raw game data and user-friendly rule management.
 
-*Note: Act 1 documentation is maintained separately.*
+*Note: [Act 1 documentation is maintained separately.](https://github.com/John95ac/OBody_NG_Preset_Distribution_Assistant_NG)*
 
 ## System Architecture
 
@@ -106,3 +106,4 @@ CommonLibSSE-NG is a fork of the popular [CommonLibSSE](https://github.com/power
 - [Frozen Application License](OBody_NG_PDA_Assistance/SKSE/Plugins/OBody_NG_PDA_NG_Full_Assistance/Assets/LICENSE%20frozen_application_license.txt)
 - [Sound Credits](OBody_NG_PDA_Assistance/SKSE/Plugins/OBody_NG_PDA_NG_Full_Assistance/Assets/Sound/credits%20Sound.txt)
 - [Photo Credits](OBody_NG_PDA_Assistance/SKSE/Plugins/OBody_NG_PDA_NG_Full_Assistance/Assets/Data/credits%20photos.txt)
+
