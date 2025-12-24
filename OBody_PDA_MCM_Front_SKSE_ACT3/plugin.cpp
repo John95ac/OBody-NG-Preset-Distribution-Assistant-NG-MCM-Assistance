@@ -104,13 +104,6 @@ static bool g_initialDelayComplete = false;
 static std::atomic<bool> g_pauseMonitoring(false);
 static bool g_activationMessageShown = false;
 
-static std::atomic<bool> g_startupSoundEnabled(true);
-static std::atomic<bool> g_topNotificationsVisible(true);
-static std::time_t g_lastIniCheckTime = 0;
-static fs::path g_iniPath;
-static std::thread g_iniMonitorThread;
-static std::atomic<bool> g_monitoringIni(false);
-
 static std::atomic<bool> g_soundsPaused(false);
 static std::mutex g_pauseMutex;
 
@@ -120,20 +113,11 @@ static fs::path g_soundsDirectory;
 static fs::path g_scriptsDirectory;
 static fs::path g_soundScriptDirectory;
 
-static std::atomic<float> g_soundVolume(0.8f);
-static std::atomic<bool> g_volumeControlEnabled(true);
-
 static std::atomic<bool> g_startMCMExecuted(false);
 
-static fs::path g_hostIniPath;
-static std::string g_mcmUrl = "http://localhost:6050/";
-static std::mutex g_urlMutex;
-
-static fs::path g_mcmIniPath;
-static std::thread g_mcmMonitorThread;
-static std::atomic<bool> g_monitoringMCMIni(false);
-static std::time_t g_lastMCMIniCheckTime = 0;
-static std::mutex g_mcmIniMutex;
+static std::atomic<bool> g_mcmActivationBlocked(false);
+static std::chrono::steady_clock::time_point g_lastMCMActivationTime;
+static std::mutex g_mcmActivationMutex;
 
 static fs::path g_jsonMasterIniPath;
 static fs::path g_jsonSourcePath;
@@ -148,23 +132,8 @@ static std::thread g_jsonRecordMonitorThread;
 static std::atomic<bool> g_monitoringJsonRecord(false);
 
 void ProcessOBodyPDAActivation();
-void PlaySoundOnce(const std::string& soundFileName);
-void ExecuteStartMCMScript();
-void ExecuteStartMCMAtStartup();
-void ResetHostActiveAtStartup();
-void StartMonitoringThread();
+void ExecuteStandaloneModeEXE();
 void StopMonitoringThread();
-bool LoadPDASettings();
-bool LoadHostSettings();
-bool ModifyINIValue(const std::string& newValue);
-bool SetHostActiveStatus(bool active);
-bool GetHostActiveStatus();
-bool SetMCMActiveStatus(bool active);
-bool GetMCMActiveStatus();
-void StartIniMonitoring();
-void StopIniMonitoring();
-void StartMCMIniMonitoring();
-void StopMCMIniMonitoring();
 void StopAllSounds();
 OBodyPDAPaths GetAllOBodyLogsPaths();
 void WriteToAdvancedLog(const std::string& message, int lineNumber = 0);
@@ -182,7 +151,6 @@ void GenerateSoundScript();
 fs::path GetDllDirectory();
 bool SetProcessVolume(DWORD processID, float volume);
 OBodyPDAPathsResult DetectAllOBodyPDAPaths();
-void OpenMCMUrl();
 bool GetJsonMasterStatus();
 bool SetJsonMasterStatus(bool active);
 bool CopyJsonFile();
@@ -210,12 +178,8 @@ static size_t FindCaseInsensitive(const std::string& haystack, const std::string
 }
 
 void ShowGameNotification(const std::string& message) {
-    if (g_topNotificationsVisible.load()) {
-        RE::DebugNotification(message.c_str());
-        WriteToAdvancedLog("IN-GAME MESSAGE SHOWN: " + message, __LINE__);
-    } else {
-        WriteToAdvancedLog("IN-GAME MESSAGE SUPPRESSED: " + message, __LINE__);
-    }
+    RE::DebugNotification(message.c_str());
+    WriteToAdvancedLog("IN-GAME MESSAGE SHOWN: " + message, __LINE__);
 }
 
 std::string GetTrackDirectory() {
@@ -609,309 +573,6 @@ void CleanStopFiles() {
             } catch (...) {
             }
         }
-    }
-}
-
-// ===== HOST INI MANAGEMENT SYSTEM =====
-bool LoadHostSettings() {
-    try {
-        if (g_hostIniPath.empty()) {
-            fs::path dllDir = GetDllDirectory();
-            if (!dllDir.empty()) {
-                g_hostIniPath = dllDir / "Act3_OBody_NG_PDA_NG.ini";
-            } else {
-                logger::error("Could not determine DLL directory for host INI");
-                WriteToAdvancedLog("ERROR: Could not determine DLL directory for host INI", __LINE__);
-                return false;
-            }
-        }
-        
-        if (!fs::exists(g_hostIniPath)) {
-            logger::warn("Host INI file not found: {}", g_hostIniPath.string());
-            WriteToAdvancedLog("WARNING: Host INI file not found at: " + g_hostIniPath.string(), __LINE__);
-            WriteToAdvancedLog("Using default URL: " + g_mcmUrl, __LINE__);
-            return false;
-        }
-
-        std::ifstream iniFile(g_hostIniPath);
-        if (!iniFile.is_open()) {
-            logger::error("Could not open Host INI file");
-            WriteToAdvancedLog("ERROR: Could not open Host INI file", __LINE__);
-            return false;
-        }
-
-        std::string line;
-        std::string currentSection;
-        std::string newUrl = g_mcmUrl;
-
-        while (std::getline(iniFile, line)) {
-            line.erase(0, line.find_first_not_of(" \t\r\n"));
-            line.erase(line.find_last_not_of(" \t\r\n") + 1);
-
-            if (line.empty() || line[0] == ';' || line[0] == '#') {
-                continue;
-            }
-
-            if (line[0] == '[' && line[line.length() - 1] == ']') {
-                currentSection = line.substr(1, line.length() - 2);
-                continue;
-            }
-
-            size_t equalPos = line.find('=');
-            if (equalPos != std::string::npos) {
-                std::string key = line.substr(0, equalPos);
-                std::string value = line.substr(equalPos + 1);
-
-                key.erase(0, key.find_first_not_of(" \t"));
-                key.erase(key.find_last_not_of(" \t") + 1);
-                value.erase(0, value.find_first_not_of(" \t"));
-                value.erase(value.find_last_not_of(" \t") + 1);
-
-                std::string sectionLower = currentSection;
-                std::string keyLower = key;
-                std::transform(sectionLower.begin(), sectionLower.end(), sectionLower.begin(), ::tolower);
-                std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(), ::tolower);
-
-                if (sectionLower == "host" && keyLower == "localhost") {
-                    newUrl = value;
-                    break;
-                }
-            }
-        }
-
-        iniFile.close();
-
-        {
-            std::lock_guard<std::mutex> lock(g_urlMutex);
-            if (newUrl != g_mcmUrl) {
-                g_mcmUrl = newUrl;
-                logger::info("MCM URL updated from host INI: {}", g_mcmUrl);
-                WriteToAdvancedLog("MCM URL updated from host INI: " + g_mcmUrl, __LINE__);
-            }
-        }
-
-        WriteToAdvancedLog("Host settings loaded successfully", __LINE__);
-        WriteToAdvancedLog("Current MCM URL: " + g_mcmUrl, __LINE__);
-
-        return true;
-
-    } catch (const std::exception& e) {
-        logger::error("Error loading host settings: {}", e.what());
-        WriteToAdvancedLog("ERROR loading host settings: " + std::string(e.what()), __LINE__);
-        return false;
-    }
-}
-
-bool GetHostActiveStatus() {
-    try {
-        if (g_hostIniPath.empty() || !fs::exists(g_hostIniPath)) {
-            WriteToAdvancedLog("Host INI not found, returning false", __LINE__);
-            return false;
-        }
-
-        std::ifstream iniFile(g_hostIniPath);
-        if (!iniFile.is_open()) {
-            WriteToAdvancedLog("Could not open Host INI for reading", __LINE__);
-            return false;
-        }
-
-        std::string line;
-        std::string currentSection;
-
-        while (std::getline(iniFile, line)) {
-            line.erase(0, line.find_first_not_of(" \t\r\n"));
-            line.erase(line.find_last_not_of(" \t\r\n") + 1);
-
-            if (line.empty() || line[0] == ';' || line[0] == '#') {
-                continue;
-            }
-
-            if (line[0] == '[' && line[line.length() - 1] == ']') {
-                currentSection = line.substr(1, line.length() - 2);
-                continue;
-            }
-
-            size_t equalPos = line.find('=');
-            if (equalPos != std::string::npos) {
-                std::string key = line.substr(0, equalPos);
-                std::string value = line.substr(equalPos + 1);
-
-                key.erase(0, key.find_first_not_of(" \t"));
-                key.erase(key.find_last_not_of(" \t") + 1);
-                value.erase(0, value.find_first_not_of(" \t"));
-                value.erase(value.find_last_not_of(" \t") + 1);
-
-                std::string sectionLower = currentSection;
-                std::string keyLower = key;
-                std::transform(sectionLower.begin(), sectionLower.end(), sectionLower.begin(), ::tolower);
-                std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(), ::tolower);
-
-                if (sectionLower == "active" && keyLower == "active_host") {
-                    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-                    bool result = (value == "true" || value == "1" || value == "yes");
-                    iniFile.close();
-                    WriteToAdvancedLog("Host active status read: " + std::string(result ? "true" : "false"), __LINE__);
-                    return result;
-                }
-            }
-        }
-
-        iniFile.close();
-        WriteToAdvancedLog("active_host not found in INI, returning false", __LINE__);
-        return false;
-
-    } catch (const std::exception& e) {
-        WriteToAdvancedLog("ERROR reading host active status: " + std::string(e.what()), __LINE__);
-        return false;
-    }
-}
-
-bool SetHostActiveStatus(bool active) {
-    try {
-        if (g_hostIniPath.empty() || !fs::exists(g_hostIniPath)) {
-            WriteToAdvancedLog("Host INI not found, cannot set active status", __LINE__);
-            return false;
-        }
-
-        std::ifstream fileIn(g_hostIniPath);
-        if (!fileIn.is_open()) {
-            WriteToAdvancedLog("Could not open Host INI for reading", __LINE__);
-            return false;
-        }
-
-        std::string content((std::istreambuf_iterator<char>(fileIn)), 
-                           std::istreambuf_iterator<char>());
-        fileIn.close();
-
-        std::string searchPattern = "active_host = ";
-        size_t pos = content.find(searchPattern);
-        if (pos != std::string::npos) {
-            size_t lineEnd = content.find('\n', pos);
-            if (lineEnd == std::string::npos) lineEnd = content.length();
-            
-            std::string newLine = searchPattern + (active ? "true" : "false");
-            content.replace(pos, lineEnd - pos, newLine);
-        } else {
-            WriteToAdvancedLog("active_host entry not found in Host INI", __LINE__);
-            return false;
-        }
-
-        std::ofstream fileOut(g_hostIniPath);
-        if (!fileOut.is_open()) {
-            WriteToAdvancedLog("Could not open Host INI for writing", __LINE__);
-            return false;
-        }
-        fileOut << content;
-        fileOut.close();
-
-        WriteToAdvancedLog("Host active status set to: " + std::string(active ? "true" : "false"), __LINE__);
-        return true;
-
-    } catch (const std::exception& e) {
-        WriteToAdvancedLog("ERROR setting host active status: " + std::string(e.what()), __LINE__);
-        return false;
-    }
-}
-
-// ===== MCM INI MANAGEMENT SYSTEM =====
-bool GetMCMActiveStatus() {
-    try {
-        if (g_mcmIniPath.empty() || !fs::exists(g_mcmIniPath)) {
-            return false;
-        }
-
-        std::ifstream iniFile(g_mcmIniPath);
-        if (!iniFile.is_open()) {
-            return false;
-        }
-
-        std::string line;
-        std::string currentSection;
-
-        while (std::getline(iniFile, line)) {
-            line.erase(0, line.find_first_not_of(" \t\r\n"));
-            line.erase(line.find_last_not_of(" \t\r\n") + 1);
-
-            if (line.empty() || line[0] == ';' || line[0] == '#') {
-                continue;
-            }
-
-            if (line[0] == '[' && line[line.length() - 1] == ']') {
-                currentSection = line.substr(1, line.length() - 2);
-                continue;
-            }
-
-            size_t equalPos = line.find('=');
-            if (equalPos != std::string::npos) {
-                std::string key = line.substr(0, equalPos);
-                std::string value = line.substr(equalPos + 1);
-
-                key.erase(0, key.find_first_not_of(" \t"));
-                key.erase(key.find_last_not_of(" \t") + 1);
-                value.erase(0, value.find_first_not_of(" \t"));
-                value.erase(value.find_last_not_of(" \t") + 1);
-
-                std::string sectionLower = currentSection;
-                std::string keyLower = key;
-                std::transform(sectionLower.begin(), sectionLower.end(), sectionLower.begin(), ::tolower);
-                std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(), ::tolower);
-
-                if (sectionLower == "active_mcm" && keyLower == "mcm") {
-                    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-                    bool result = (value == "true" || value == "1" || value == "yes");
-                    iniFile.close();
-                    return result;
-                }
-            }
-        }
-
-        iniFile.close();
-        return false;
-
-    } catch (const std::exception& e) {
-        return false;
-    }
-}
-
-bool SetMCMActiveStatus(bool active) {
-    try {
-        if (g_mcmIniPath.empty() || !fs::exists(g_mcmIniPath)) {
-            return false;
-        }
-
-        std::ifstream fileIn(g_mcmIniPath);
-        if (!fileIn.is_open()) {
-            return false;
-        }
-
-        std::string content((std::istreambuf_iterator<char>(fileIn)), 
-                           std::istreambuf_iterator<char>());
-        fileIn.close();
-
-        std::string searchPattern = "MCM = ";
-        size_t pos = content.find(searchPattern);
-        if (pos != std::string::npos) {
-            size_t lineEnd = content.find('\n', pos);
-            if (lineEnd == std::string::npos) lineEnd = content.length();
-            
-            std::string newLine = searchPattern + (active ? "true" : "false");
-            content.replace(pos, lineEnd - pos, newLine);
-        } else {
-            return false;
-        }
-
-        std::ofstream fileOut(g_mcmIniPath);
-        if (!fileOut.is_open()) {
-            return false;
-        }
-        fileOut << content;
-        fileOut.close();
-
-        WriteToAdvancedLog("MCM INI status set to: " + std::string(active ? "true" : "false"), __LINE__);
-        return true;
-
-    } catch (const std::exception& e) {
-        return false;
     }
 }
 
@@ -1479,348 +1140,6 @@ void StopJsonRecordMonitoring() {
     }
 }
 
-// ===== STARTUP RESET SYSTEM =====
-void ResetHostActiveAtStartup() {
-    try {
-        WriteToAdvancedLog("========================================", __LINE__);
-        WriteToAdvancedLog("STARTUP RESET: Checking host active status", __LINE__);
-        WriteToAdvancedLog("========================================", __LINE__);
-        
-        bool currentStatus = GetHostActiveStatus();
-        WriteToAdvancedLog("Current host active status: " + std::string(currentStatus ? "true" : "false"), __LINE__);
-        
-        if (currentStatus) {
-            WriteToAdvancedLog("Resetting host active status from true to false", __LINE__);
-            SetHostActiveStatus(false);
-        } else {
-            WriteToAdvancedLog("Host active status already false, no change needed", __LINE__);
-        }
-        
-        WriteToAdvancedLog("Startup reset completed", __LINE__);
-        WriteToAdvancedLog("========================================", __LINE__);
-        
-    } catch (const std::exception& e) {
-        WriteToAdvancedLog("ERROR in startup reset: " + std::string(e.what()), __LINE__);
-    }
-}
-
-// ===== MCM INI MONITORING SYSTEM =====
-void MCMIniMonitorThreadFunction() {
-    logger::info("MCM INI monitoring thread started");
-    WriteToAdvancedLog("MCM INI monitoring thread started", __LINE__);
-
-    while (g_monitoringMCMIni.load() && !g_isShuttingDown.load()) {
-        try {
-            if (fs::exists(g_mcmIniPath)) {
-                auto currentModTime = fs::last_write_time(g_mcmIniPath);
-                auto currentModTimeT = std::chrono::system_clock::to_time_t(
-                    std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                        currentModTime - fs::file_time_type::clock::now() + std::chrono::system_clock::now()));
-
-                if (currentModTimeT > g_lastMCMIniCheckTime) {
-                    std::lock_guard<std::mutex> lock(g_mcmIniMutex);
-                    
-                    bool mcmActive = GetMCMActiveStatus();
-                    if (mcmActive) {
-                        WriteToAdvancedLog("MCM INI detected as active=true, performing reset", __LINE__);
-                        
-                        SetHostActiveStatus(false);
-                        SetMCMActiveStatus(false);
-                        
-                        WriteToAdvancedLog("Reset completed: host=false, MCM=false", __LINE__);
-                    }
-                    
-                    g_lastMCMIniCheckTime = currentModTimeT;
-                }
-            }
-        } catch (...) {
-        }
-
-        std::this_thread::sleep_for(std::chrono::seconds(4));
-    }
-
-    logger::info("MCM INI monitoring thread stopped");
-    WriteToAdvancedLog("MCM INI monitoring thread stopped", __LINE__);
-}
-
-void StartMCMIniMonitoring() {
-    if (!g_monitoringMCMIni.load() && !g_mcmIniPath.empty() && fs::exists(g_mcmIniPath)) {
-        g_monitoringMCMIni = true;
-        g_mcmMonitorThread = std::thread(MCMIniMonitorThreadFunction);
-        WriteToAdvancedLog("MCM INI monitoring started for: " + g_mcmIniPath.string(), __LINE__);
-    }
-}
-
-void StopMCMIniMonitoring() {
-    if (g_monitoringMCMIni.load()) {
-        g_monitoringMCMIni = false;
-        if (g_mcmMonitorThread.joinable()) {
-            g_mcmMonitorThread.join();
-        }
-        WriteToAdvancedLog("MCM INI monitoring stopped", __LINE__);
-    }
-}
-
-// ===== URL OPENING SYSTEM =====
-void OpenMCMUrl() {
-    try {
-        std::string urlToOpen;
-        {
-            std::lock_guard<std::mutex> lock(g_urlMutex);
-            urlToOpen = g_mcmUrl;
-        }
-
-        WriteToAdvancedLog("Opening MCM URL: " + urlToOpen, __LINE__);
-
-        HINSTANCE result = ShellExecuteA(
-            NULL,
-            "open",
-            urlToOpen.c_str(),
-            NULL,
-            NULL,
-            SW_SHOW
-        );
-
-        if ((INT_PTR)result > 32) {
-            WriteToAdvancedLog("MCM URL opened successfully in default browser", __LINE__);
-            logger::info("MCM URL opened successfully: {}", urlToOpen);
-        } else {
-            WriteToAdvancedLog("ERROR: Failed to open MCM URL, error code: " + std::to_string((INT_PTR)result), __LINE__);
-            logger::error("Failed to open MCM URL: {}, error code: {}", urlToOpen, (INT_PTR)result);
-        }
-
-    } catch (const std::exception& e) {
-        logger::error("Error in OpenMCMUrl: {}", e.what());
-        WriteToAdvancedLog("ERROR in OpenMCMUrl: " + std::string(e.what()), __LINE__);
-    }
-}
-
-bool LoadPDASettings() {
-    try {
-        if (g_iniPath.empty()) {
-            logger::error("INI path is empty, cannot load settings");
-            WriteToAdvancedLog("ERROR: g_iniPath is empty, impossible to load settings", __LINE__);
-            return false;
-        }
-        
-        if (!fs::exists(g_iniPath)) {
-            logger::warn("INI file not found: {}", g_iniPath.string());
-            WriteToAdvancedLog("WARNING: INI file not found at: " + g_iniPath.string(), __LINE__);
-            return false;
-        }
-
-        std::ifstream iniFile(g_iniPath);
-        if (!iniFile.is_open()) {
-            logger::error("Could not open INI file");
-            return false;
-        }
-
-        std::string line;
-        std::string currentSection;
-        bool newStartupSound = g_startupSoundEnabled.load();
-        bool newTopNotifications = g_topNotificationsVisible.load();
-        float newSoundVolume = g_soundVolume.load();
-        bool newVolumeEnabled = g_volumeControlEnabled.load();
-
-        while (std::getline(iniFile, line)) {
-            line.erase(0, line.find_first_not_of(" \t\r\n"));
-            line.erase(line.find_last_not_of(" \t\r\n") + 1);
-
-            if (line.empty() || line[0] == ';' || line[0] == '#') {
-                continue;
-            }
-
-            if (line[0] == '[' && line[line.length() - 1] == ']') {
-                currentSection = line.substr(1, line.length() - 2);
-                continue;
-            }
-
-            size_t equalPos = line.find('=');
-            if (equalPos != std::string::npos) {
-                std::string key = line.substr(0, equalPos);
-                std::string value = line.substr(equalPos + 1);
-
-                key.erase(0, key.find_first_not_of(" \t"));
-                key.erase(key.find_last_not_of(" \t") + 1);
-                value.erase(0, value.find_first_not_of(" \t"));
-                value.erase(value.find_last_not_of(" \t") + 1);
-
-                std::string sectionLower = currentSection;
-                std::string keyLower = key;
-                std::transform(sectionLower.begin(), sectionLower.end(), sectionLower.begin(), ::tolower);
-                std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(), ::tolower);
-
-                if (sectionLower == "advanced_mcm" && keyLower == "startup") {
-                    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-                    newStartupSound = (value == "true" || value == "1" || value == "yes");
-                } else if (sectionLower == "top notifications" && keyLower == "visible") {
-                    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-                    newTopNotifications = (value == "true" || value == "1" || value == "yes");
-                } else if (sectionLower == "volume control") {
-                    if (keyLower == "soundvolume") {
-                        try {
-                            float vol = std::stof(value);
-                            if (vol >= 0.0f && vol <= 1.0f) {
-                                newSoundVolume = vol;
-                            }
-                        } catch (...) {}
-                    } else if (keyLower == "mastervolumeenabled") {
-                        std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-                        newVolumeEnabled = (value == "true" || value == "1" || value == "yes");
-                    }
-                }
-            }
-        }
-
-        iniFile.close();
-
-        bool startupChanged = (newStartupSound != g_startupSoundEnabled.load());
-        bool notificationsChanged = (newTopNotifications != g_topNotificationsVisible.load());
-        bool volumeChanged = (newSoundVolume != g_soundVolume.load() || 
-                             newVolumeEnabled != g_volumeControlEnabled.load());
-
-        g_startupSoundEnabled = newStartupSound;
-        g_topNotificationsVisible = newTopNotifications;
-        g_soundVolume = newSoundVolume;
-        g_volumeControlEnabled = newVolumeEnabled;
-
-        if (startupChanged) {
-            logger::info("Startup sound {}", newStartupSound ? "enabled" : "disabled");
-            WriteToAdvancedLog("Startup sound " + std::string(newStartupSound ? "enabled" : "disabled"), __LINE__);
-        }
-
-        if (notificationsChanged) {
-            logger::info("Top notifications {}", newTopNotifications ? "enabled" : "disabled");
-            WriteToAdvancedLog("Top notifications " + std::string(newTopNotifications ? "enabled" : "disabled"), __LINE__);
-        }
-
-        if (volumeChanged) {
-            logger::info("Volume settings changed - Sound: {}, Enabled: {}", 
-                        newSoundVolume, newVolumeEnabled);
-            WriteToAdvancedLog("Volume settings - Sound: " + std::to_string(newSoundVolume) + 
-                              ", Control: " + std::string(newVolumeEnabled ? "enabled" : "disabled"), __LINE__);
-        }
-
-        WriteToAdvancedLog(
-            "PDA settings loaded - Startup Sound: " + std::string(g_startupSoundEnabled.load() ? "enabled" : "disabled") +
-                ", Top Notifications: " + std::string(g_topNotificationsVisible.load() ? "enabled" : "disabled") +
-                ", Volume Control: " + std::string(g_volumeControlEnabled.load() ? "enabled" : "disabled"),
-            __LINE__);
-
-        return true;
-
-    } catch (const std::exception& e) {
-        logger::error("Error loading PDA settings: {}", e.what());
-        return false;
-    }
-}
-
-bool ModifyINIValue(const std::string& newValue) {
-    try {
-        if (g_iniPath.empty()) {
-            logger::error("INI path is empty, cannot modify");
-            WriteToAdvancedLog("ERROR: g_iniPath is empty, impossible to modify INI", __LINE__);
-            return false;
-        }
-        
-        if (!fs::exists(g_iniPath)) {
-            logger::error("INI file not found: {}", g_iniPath.string());
-            WriteToAdvancedLog("ERROR: INI file not found: " + g_iniPath.string(), __LINE__);
-            return false;
-        }
-
-        std::ifstream fileIn(g_iniPath);
-        if (!fileIn.is_open()) {
-            logger::error("Could not open INI file for reading");
-            return false;
-        }
-
-        std::string content((std::istreambuf_iterator<char>(fileIn)), 
-                           std::istreambuf_iterator<char>());
-        fileIn.close();
-
-        size_t pos = content.find("Advanced_MCM = ");
-        if (pos != std::string::npos) {
-            size_t lineEnd = content.find('\n', pos);
-            if (lineEnd == std::string::npos) lineEnd = content.length();
-            
-            std::string newLine = "Advanced_MCM = " + newValue;
-            content.replace(pos, lineEnd - pos, newLine);
-        } else {
-            logger::error("Advanced_MCM entry not found in INI");
-            return false;
-        }
-
-        std::ofstream fileOut(g_iniPath);
-        if (!fileOut.is_open()) {
-            logger::error("Could not open INI file for writing");
-            return false;
-        }
-        fileOut << content;
-        fileOut.close();
-
-        logger::info("INI modified: Advanced_MCM = {}", newValue);
-        WriteToAdvancedLog("INI modified: Advanced_MCM = " + newValue, __LINE__);
-        return true;
-    } catch (const std::exception& e) {
-        logger::error("Error modifying INI: {}", e.what());
-        return false;
-    }
-}
-
-void IniMonitorThreadFunction() {
-    logger::info("INI monitoring thread started");
-    
-    // Initialize timestamp to prevent immediate reload on startup
-    if (fs::exists(g_iniPath)) {
-        try {
-            auto currentModTime = fs::last_write_time(g_iniPath);
-            g_lastIniCheckTime = std::chrono::system_clock::to_time_t(
-                std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                    currentModTime - fs::file_time_type::clock::now() + std::chrono::system_clock::now()));
-        } catch (...) {}
-    }
-
-    while (g_monitoringIni.load() && !g_isShuttingDown.load()) {
-        try {
-            if (fs::exists(g_iniPath)) {
-                auto currentModTime = fs::last_write_time(g_iniPath);
-                auto currentModTimeT = std::chrono::system_clock::to_time_t(
-                    std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                        currentModTime - fs::file_time_type::clock::now() + std::chrono::system_clock::now()));
-
-                if (currentModTimeT > g_lastIniCheckTime) {
-                    WriteToAdvancedLog("INI file changed, reloading settings...", __LINE__);
-                    LoadPDASettings();
-                    LoadHostSettings();
-                    g_lastIniCheckTime = currentModTimeT;
-                }
-            }
-        } catch (...) {
-        }
-
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-    }
-
-    logger::info("INI monitoring thread stopped");
-}
-
-void StartIniMonitoring() {
-    if (!g_monitoringIni.load()) {
-        g_monitoringIni = true;
-        g_iniMonitorThread = std::thread(IniMonitorThreadFunction);
-    }
-}
-
-void StopIniMonitoring() {
-    if (g_monitoringIni.load()) {
-        g_monitoringIni = false;
-        if (g_iniMonitorThread.joinable()) {
-            g_iniMonitorThread.join();
-        }
-    }
-}
-
 std::string GetDocumentsPath() {
     try {
         wchar_t path[MAX_PATH] = {0};
@@ -2319,117 +1638,98 @@ void StopAllSounds() {
     StopAllScripts(); 
 }
 
-void PlaySoundOnce(const std::string& soundFileName) {
+void ExecuteStandaloneModeEXE() {
     try {
-        if (!g_scriptsInitialized) {
-            StartAllScriptsFrozen();
-        }
-
-        fs::path soundPath = g_soundsDirectory / soundFileName;
-        
-        if (!fs::exists(soundPath)) {
-            logger::error("Sound file not found: {}", soundPath.string());
-            WriteToAdvancedLog("ERROR: Sound file not found: " + soundPath.string(), __LINE__);
+        fs::path baseDir = !g_dllDirectory.empty() ? g_dllDirectory : GetDllDirectory();
+        if (baseDir.empty()) {
+            logger::error("Could not determine base directory for Standalone Mode.exe");
+            WriteToAdvancedLog("ERROR: Could not determine base directory for Standalone Mode.exe", __LINE__);
             return;
         }
 
-        PROCESS_INFORMATION pi = LaunchPowerShellScript(g_soundScript.scriptPath.string());
+        fs::path exePath = baseDir / "OBody_NG_PDA_NG_Full_Assistance" / "Standalone Mode" / "Standalone Mode.exe";
         
-        if (pi.hProcess != 0 && pi.hProcess != INVALID_HANDLE_VALUE) {
-            if (g_volumeControlEnabled.load()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                bool volumeApplied = SetProcessVolume(pi.dwProcessId, g_soundVolume.load());
-                if (volumeApplied) {
-                    WriteToAdvancedLog("Sound script volume set to " + std::to_string(static_cast<int>(g_soundVolume.load() * 100)) + "% (PID: " + std::to_string(pi.dwProcessId) + ")", __LINE__);
-                } else {
-                    WriteToAdvancedLog("WARNING: Could not set volume for Sound script", __LINE__);
-                }
-            }
+        if (!fs::exists(exePath)) {
+            logger::error("Standalone Mode.exe not found: {}", exePath.string());
+            WriteToAdvancedLog("ERROR: Standalone Mode.exe not found: " + exePath.string(), __LINE__);
+            return;
+        }
+
+        STARTUPINFOA si = {sizeof(si)};
+        si.dwFlags = STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_SHOW;
+        
+        PROCESS_INFORMATION pi = {0};
+        
+        std::string exePathStr = exePath.string();
+        
+        if (CreateProcessA(
+            exePathStr.c_str(),
+            NULL,
+            NULL,
+            NULL,
+            FALSE,
+            0,
+            NULL,
+            exePath.parent_path().string().c_str(),
+            &si,
+            &pi)) {
             
             CloseHandle(pi.hProcess);
             CloseHandle(pi.hThread);
-            WriteToAdvancedLog("Sound played successfully: " + soundFileName, __LINE__);
-            logger::info("Sound played successfully");
+            WriteToAdvancedLog("Standalone Mode.exe executed successfully", __LINE__);
+            logger::info("Standalone Mode.exe executed successfully");
         } else {
-            logger::error("Failed to create sound process. Error: {}", GetLastError());
-            WriteToAdvancedLog("ERROR: Failed to play sound", __LINE__);
+            logger::error("Failed to execute Standalone Mode.exe. Error: {}", GetLastError());
+            WriteToAdvancedLog("ERROR: Failed to execute Standalone Mode.exe", __LINE__);
         }
     } catch (const std::exception& e) {
-        logger::error("Error in PlaySoundOnce: {}", e.what());
-        WriteToAdvancedLog("ERROR in PlaySoundOnce: " + std::string(e.what()), __LINE__);
-    }
-}
-
-void ExecuteStartMCMScript() {
-    try {
-        fs::path startMCMPath = g_scriptsDirectory / "Assets" / "startMCM.ps1";  
-        
-        if (!fs::exists(startMCMPath)) {
-            logger::error("StartMCM script not found: {}", startMCMPath.string());
-            WriteToAdvancedLog("ERROR: StartMCM script not found: " + startMCMPath.string(), __LINE__);
-            return;
-        }
-
-        PROCESS_INFORMATION pi = LaunchPowerShellScript(startMCMPath.string());
-        
-        if (pi.hProcess != 0 && pi.hProcess != INVALID_HANDLE_VALUE) {
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
-            WriteToAdvancedLog("StartMCM script executed successfully", __LINE__);
-            WriteToAdvancedLog("Web interface activated", __LINE__);
-            logger::info("StartMCM script executed successfully");
-        } else {
-            logger::error("Failed to execute StartMCM script. Error: {}", GetLastError());
-            WriteToAdvancedLog("ERROR: Failed to execute StartMCM script", __LINE__);
-        }
-    } catch (const std::exception& e) {
-        logger::error("Error in ExecuteStartMCMScript: {}", e.what());
-        WriteToAdvancedLog("ERROR in ExecuteStartMCMScript: " + std::string(e.what()), __LINE__);
+        logger::error("Error in ExecuteStandaloneModeEXE: {}", e.what());
+        WriteToAdvancedLog("ERROR in ExecuteStandaloneModeEXE: " + std::string(e.what()), __LINE__);
     }
 }
 
 // ===== MODIFIED ACTIVATION SYSTEM WITH NEW LOGIC =====
 void ProcessOBodyPDAActivation() {
+    {
+        std::lock_guard<std::mutex> lock(g_mcmActivationMutex);
+
+        if (g_mcmActivationBlocked.load()) {
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - g_lastMCMActivationTime).count();
+
+            WriteToAdvancedLog("MCM activation BLOCKED - Cooldown active (" + std::to_string(5 - elapsed) + " seconds remaining)", __LINE__);
+            return;
+        }
+
+        g_mcmActivationBlocked = true;
+        g_lastMCMActivationTime = std::chrono::steady_clock::now();
+    }
+
     WriteToAdvancedLog("========================================", __LINE__);
-    WriteToAdvancedLog("MCM BUTTON PRESSED - NEW ACTIVATION LOGIC", __LINE__);
+    WriteToAdvancedLog("MCM BUTTON PRESSED - STANDALONE MODE", __LINE__);
     WriteToAdvancedLog("========================================", __LINE__);
 
     std::thread([]() {
         try {
-            WriteToAdvancedLog("Step 1: Playing sound notification", __LINE__);
-            PlaySoundOnce("miau-PDA.wav");
-            
-            WriteToAdvancedLog("Step 2: Loading host settings and checking status", __LINE__);
-            LoadHostSettings();
-            
-            bool isActive = GetHostActiveStatus();
-            WriteToAdvancedLog("Current host active status: " + std::string(isActive ? "true" : "false"), __LINE__);
-            
-            if (!isActive) {
-                WriteToAdvancedLog("Step 3a: First time activation - Setting active_host to true", __LINE__);
-                SetHostActiveStatus(true);
-                
-                WriteToAdvancedLog("Step 3b: Executing startMCM.ps1 script", __LINE__);
-                ExecuteStartMCMScript();
-                
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-                
-                WriteToAdvancedLog("Step 3c: Opening MCM URL", __LINE__);
-                OpenMCMUrl();
-                
-                WriteToAdvancedLog("First time activation completed", __LINE__);
-            } else {
-                WriteToAdvancedLog("Step 3: Subsequent activation - Opening MCM URL directly", __LINE__);
-                OpenMCMUrl();
-                
-                WriteToAdvancedLog("Subsequent activation completed", __LINE__);
-            }
-            
+            WriteToAdvancedLog("Executing Standalone Mode.exe", __LINE__);
+            ExecuteStandaloneModeEXE();
+
             WriteToAdvancedLog("MCM activation process finished", __LINE__);
             WriteToAdvancedLog("========================================", __LINE__);
-            
+
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+
+            {
+                std::lock_guard<std::mutex> lock(g_mcmActivationMutex);
+                g_mcmActivationBlocked = false;
+                WriteToAdvancedLog("MCM activation cooldown ended - Ready for next activation", __LINE__);
+            }
+
         } catch (const std::exception& e) {
             WriteToAdvancedLog("ERROR in MCM activation: " + std::string(e.what()), __LINE__);
+            std::lock_guard<std::mutex> lock(g_mcmActivationMutex);
+            g_mcmActivationBlocked = false;
         }
     }).detach();
 }
@@ -2579,7 +1879,7 @@ OBodyPDAPathsResult DetectAllOBodyPDAPaths() {
     
     WriteToAdvancedLog("================================================================", __LINE__);
     WriteToAdvancedLog("  OBODY PDA - COMPLETE PATH DETECTION SYSTEM", __LINE__);
-    WriteToAdvancedLog("  Version: 2.0.9", __LINE__);
+    WriteToAdvancedLog("  Version: 3.0.1", __LINE__);
     WriteToAdvancedLog("  Time: " + GetCurrentTimeString(), __LINE__);
     WriteToAdvancedLog("================================================================", __LINE__);
     WriteToAdvancedLog("", __LINE__);
@@ -2631,50 +1931,6 @@ OBodyPDAPathsResult DetectAllOBodyPDAPaths() {
             WriteToAdvancedLog("   File size: " + std::to_string(fileSize) + " bytes", __LINE__);
         } else {
             WriteToAdvancedLog("INI FILE NOT FOUND in DLL directory", __LINE__);
-        }
-        
-        WriteToAdvancedLog("", __LINE__);
-        WriteToAdvancedLog("SEARCHING FOR HOST INI FILE...", __LINE__);
-        
-        const std::string hostIniFileName = "Act3_OBody_NG_PDA_NG.ini";
-        fs::path hostIniPath = dllDir / hostIniFileName;
-        
-        WriteToAdvancedLog("Checking: " + hostIniPath.string(), __LINE__);
-        
-        if (fs::exists(hostIniPath)) {
-            g_hostIniPath = hostIniPath;
-            auto fileSize = fs::file_size(hostIniPath);
-            WriteToAdvancedLog("HOST INI FILE FOUND!", __LINE__);
-            WriteToAdvancedLog("   Full path: " + hostIniPath.string(), __LINE__);
-            WriteToAdvancedLog("   File size: " + std::to_string(fileSize) + " bytes", __LINE__);
-        } else {
-            WriteToAdvancedLog("HOST INI FILE NOT FOUND in DLL directory", __LINE__);
-        }
-        
-        WriteToAdvancedLog("", __LINE__);
-        WriteToAdvancedLog("SEARCHING FOR MCM INI FILE...", __LINE__);
-        
-        std::vector<fs::path> mcmIniSearchPaths = {
-            dllDir / "OBody_NG_PDA_NG_Full_Assistance" / "Assets" / "ini" / "MCM.ini",
-            dllDir / "Assets" / "ini" / "MCM.ini",
-            dllDir.parent_path() / "OBody_NG_PDA_NG_Full_Assistance" / "Assets" / "ini" / "MCM.ini"
-        };
-        
-        for (const auto& searchPath : mcmIniSearchPaths) {
-            WriteToAdvancedLog("Checking: " + searchPath.string(), __LINE__);
-            
-            if (fs::exists(searchPath)) {
-                g_mcmIniPath = searchPath;
-                auto fileSize = fs::file_size(searchPath);
-                WriteToAdvancedLog("MCM INI FILE FOUND!", __LINE__);
-                WriteToAdvancedLog("   Full path: " + searchPath.string(), __LINE__);
-                WriteToAdvancedLog("   File size: " + std::to_string(fileSize) + " bytes", __LINE__);
-                break;
-            }
-        }
-        
-        if (g_mcmIniPath.empty()) {
-            WriteToAdvancedLog("MCM INI FILE NOT FOUND in any location", __LINE__);
         }
         
         WriteToAdvancedLog("", __LINE__);
@@ -2841,24 +2097,6 @@ OBodyPDAPathsResult DetectAllOBodyPDAPaths() {
                     WriteToAdvancedLog("INI FOUND: " + iniPath.string(), __LINE__);
                 }
                 
-                const std::string hostIniFileName = "Act3_OBody_NG_PDA_NG.ini";
-                fs::path hostIniPath = standardPluginPath / hostIniFileName;
-                
-                if (fs::exists(hostIniPath)) {
-                    g_hostIniPath = hostIniPath;
-                    WriteToAdvancedLog("HOST INI FOUND: " + hostIniPath.string(), __LINE__);
-                }
-                
-                fs::path mcmIniPath = BuildPathCaseInsensitive(
-                    fs::path(g_gamePath),
-                    {"Data", "SKSE", "Plugins", "OBody_NG_PDA_NG_Full_Assistance", "Assets", "ini", "MCM.ini"}
-                );
-                
-                if (fs::exists(mcmIniPath)) {
-                    g_mcmIniPath = mcmIniPath;
-                    WriteToAdvancedLog("MCM INI FOUND: " + mcmIniPath.string(), __LINE__);
-                }
-                
                 fs::path jsonMasterIniPath = BuildPathCaseInsensitive(
                     fs::path(g_gamePath),
                     {"Data", "SKSE", "Plugins", "OBody_NG_PDA_NG_Full_Assistance", "Assets", "ini", "JsonMaster.ini"}
@@ -2939,8 +2177,6 @@ OBodyPDAPathsResult DetectAllOBodyPDAPaths() {
     WriteToAdvancedLog("  [" + std::string(result.iniFound ? "OK" : "FAIL") + "] INI Configuration", __LINE__);
     WriteToAdvancedLog("  [" + std::string(result.soundFound ? "OK" : "FAIL") + "] Sound File (miau-PDA.wav)", __LINE__);
     WriteToAdvancedLog("  [" + std::string(result.scriptFound ? "OK" : "FAIL") + "] StartMCM Script", __LINE__);
-    WriteToAdvancedLog("  [" + std::string(!g_hostIniPath.empty() ? "OK" : "FAIL") + "] Host INI Configuration", __LINE__);
-    WriteToAdvancedLog("  [" + std::string(!g_mcmIniPath.empty() ? "OK" : "FAIL") + "] MCM INI Configuration", __LINE__);
     WriteToAdvancedLog("  [" + std::string(!g_jsonMasterIniPath.empty() ? "OK" : "FAIL") + "] JsonMaster INI Configuration", __LINE__);
     WriteToAdvancedLog("  [" + std::string(!g_jsonRecordIniPath.empty() ? "OK" : "FAIL") + "] JsonRecord INI Configuration", __LINE__);
     WriteToAdvancedLog("  [" + std::string(!g_jsonSourcePath.empty() && fs::exists(g_jsonSourcePath) ? "OK" : "FAIL") + "] JSON Source File", __LINE__);
@@ -2983,21 +2219,23 @@ void InitializePlugin() {
 
         WriteToAdvancedLog("OBody PDA Plugin - Starting Complete Detection...", __LINE__);
         WriteToAdvancedLog("========================================", __LINE__);
-        WriteToAdvancedLog("OBody PDA Plugin - v2.6.0", __LINE__);
+        WriteToAdvancedLog("OBody PDA Plugin - v3.0.1", __LINE__);
         WriteToAdvancedLog("Started: " + GetCurrentTimeString(), __LINE__);
         WriteToAdvancedLog("========================================", __LINE__);
         
         OBodyPDAPathsResult detection = DetectAllOBodyPDAPaths();
+
+        if (g_dllDirectory.empty() && !detection.sksePluginsDir.empty()) {
+            g_dllDirectory = detection.sksePluginsDir;
+        }
         
         if (detection.success) {
-            g_iniPath = detection.iniPath;
             g_soundsDirectory = detection.soundsBaseDir;
             g_scriptsDirectory = detection.scriptsBaseDir.parent_path();
             g_soundScriptDirectory = g_scriptsDirectory / "Sound";
             
             if (detection.detectionMethod == "DLL Directory") {
                 g_usingDllPath = true;
-                g_dllDirectory = detection.sksePluginsDir;
             }
             
             WriteToAdvancedLog("DETECTION SUCCESSFUL - All components found", __LINE__);
@@ -3006,8 +2244,6 @@ void InitializePlugin() {
             WriteToAdvancedLog("INI: " + detection.iniPath.string(), __LINE__);
             WriteToAdvancedLog("Sound: " + detection.soundFilePath.string(), __LINE__);
             WriteToAdvancedLog("Script: " + detection.startMCMScriptPath.string(), __LINE__);
-            WriteToAdvancedLog("Host INI: " + g_hostIniPath.string(), __LINE__);
-            WriteToAdvancedLog("MCM INI: " + g_mcmIniPath.string(), __LINE__);
             WriteToAdvancedLog("JsonMaster INI: " + g_jsonMasterIniPath.string(), __LINE__);
             WriteToAdvancedLog("JsonRecord INI: " + g_jsonRecordIniPath.string(), __LINE__);
             WriteToAdvancedLog("JSON Source: " + g_jsonSourcePath.string(), __LINE__);
@@ -3015,11 +2251,6 @@ void InitializePlugin() {
             WriteToAdvancedLog("Sounds Directory: " + g_soundsDirectory.string(), __LINE__);
             WriteToAdvancedLog("Scripts Directory: " + g_scriptsDirectory.string(), __LINE__);
             
-            LoadPDASettings();
-            LoadHostSettings();
-            
-            ResetHostActiveAtStartup();
-
             bool initialJsonMasterStatus = GetJsonMasterStatus();
             if (initialJsonMasterStatus) {
                 WriteToAdvancedLog("Initial JsonMaster status is true, processing JSON copy and reset", __LINE__);
@@ -3054,8 +2285,6 @@ void InitializePlugin() {
                 }
             }
             
-            StartIniMonitoring();
-            StartMCMIniMonitoring();
             StartJsonMasterMonitoring();
             StartJsonRecordMonitoring();
             
@@ -3088,8 +2317,6 @@ void ShutdownPlugin() {
     g_isShuttingDown = true;
 
     StopAllSounds();
-    StopIniMonitoring();
-    StopMCMIniMonitoring();
     StopJsonMasterMonitoring();
     StopJsonRecordMonitoring();
 
@@ -3109,19 +2336,13 @@ void MessageListener(SKSE::MessagingInterface::Message* message) {
             g_activationMessageShown = false;
             g_pauseMonitoring = false;
             g_startMCMExecuted = false;
+            g_mcmActivationBlocked = false;
 
             WriteToAdvancedLog("NEW GAME: All flags reset, ready for fresh initialization", __LINE__);
-            ResetHostActiveAtStartup();
             break;
 
         case SKSE::MessagingInterface::kPostLoadGame:
             logger::info("kPostLoadGame: Game loaded - checking systems");
-            if (!g_monitoringIni.load()) {
-                StartIniMonitoring();
-            }
-            if (!g_monitoringMCMIni.load()) {
-                StartMCMIniMonitoring();
-            }
             if (!g_monitoringJsonMaster.load()) {
                 StartJsonMasterMonitoring();
             }
@@ -3163,25 +2384,16 @@ void MessageListener(SKSE::MessagingInterface::Message* message) {
 }
 
 void SetupLog() {
-    auto logsFolder = SKSE::log::log_directory();
-    if (!logsFolder) {
-        SKSE::stl::report_and_fail("SKSE log_directory not provided, logs disabled.");
-        return;
-    }
-    auto pluginName = SKSE::PluginDeclaration::GetSingleton()->GetName();
-    auto logFilePath = *logsFolder / std::format("{}.log", pluginName);
-    auto fileLoggerPtr = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.string(), true);
-    auto loggerPtr = std::make_shared<spdlog::logger>("log", std::move(fileLoggerPtr));
+    auto loggerPtr = std::make_shared<spdlog::logger>("log");
     spdlog::set_default_logger(std::move(loggerPtr));
-    spdlog::set_level(spdlog::level::trace);
-    spdlog::flush_on(spdlog::level::info);
+    spdlog::set_level(spdlog::level::off);
 }
 
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     SKSE::Init(a_skse);
     SetupLog();
 
-    logger::info("OBody PDA Plugin v2.6.0 - Starting...");
+    logger::info("OBody PDA Plugin v3.0.1 - Starting...");
     
     auto paths = GetAllOBodyLogsPaths();
     try {
@@ -3190,7 +2402,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     } catch (...) {}
 
     WriteToAdvancedLog("========================================", __LINE__);
-    WriteToAdvancedLog("OBody PDA Plugin v2.6.0", __LINE__);
+    WriteToAdvancedLog("OBody PDA Plugin v3.0.1", __LINE__);
     WriteToAdvancedLog("Started: " + GetCurrentTimeString(), __LINE__);
     WriteToAdvancedLog("========================================", __LINE__);
 
@@ -3200,13 +2412,13 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
     
     SKSE::GetMessagingInterface()->RegisterListener(MessageListener);
 
-    logger::info("OBody PDA Plugin loaded successfully with JSON Master System");
+    logger::info("OBody PDA Plugin loaded successfully - Standalone Mode Integration");
     return true;
 }
 
 constinit auto SKSEPlugin_Version = []() {
     SKSE::PluginVersionData v;
-    v.PluginVersion({2, 6, 0});
+    v.PluginVersion({3, 0, 1});
     v.PluginName("OBody PDA Advanced MCM");
     v.AuthorName("John95AC");
     v.UsesAddressLibrary();
