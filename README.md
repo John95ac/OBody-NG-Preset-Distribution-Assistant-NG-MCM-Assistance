@@ -27,7 +27,7 @@ Together, these components empower users to obtain and manage game information t
 - **Standalone MCM Support:** Real-time monitoring of external tool states.
 - **In-Game Notifications:** Immediate feedback via `RE::DebugNotification`.
 
-## Web Tabs (Act 3 UI)
+## Hub Tabs (Act 3 UI)
 
 The local web UI is served by `Assets/server.pyw` and rendered by `Assets/index.html` + `Assets/app.js` + `Assets/style.css`.
 
@@ -106,4 +106,5 @@ CommonLibSSE-NG is a fork of the popular [CommonLibSSE](https://github.com/power
 - [Frozen Application License](OBody_NG_PDA_Assistance/SKSE/Plugins/OBody_NG_PDA_NG_Full_Assistance/Assets/LICENSE%20frozen_application_license.txt)
 - [Sound Credits](OBody_NG_PDA_Assistance/SKSE/Plugins/OBody_NG_PDA_NG_Full_Assistance/Assets/Sound/credits%20Sound.txt)
 - [Photo Credits](OBody_NG_PDA_Assistance/SKSE/Plugins/OBody_NG_PDA_NG_Full_Assistance/Assets/Data/credits%20photos.txt)
+
 
